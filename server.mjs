@@ -1568,6 +1568,12 @@ const server = http.createServer(async (req, res) => {
         case '/api/send': {
           const files = Array.isArray(b.files) ? b.files.map(String).slice(0, 20) : [];
           if (!String(b.text || '').trim() && !files.length) throw new Error('Type a message first.');
+          // "pause" / "stop" / "wait" typed while Claude works = press Stop (Claude never reads it mid-turn otherwise).
+          const pr = runs.get(checkProject(b.project));
+          if (pr?.busy && !files.length && /^\s*(pause|stop|wait|hold on|halt)[\s.!]*$/i.test(String(b.text || ''))) {
+            addChat(pr.project, { kind: 'user', text: String(b.text).trim(), files: [] });
+            await stopNow(b.project); break;
+          }
           await sendMessage(b.project, String(b.text || ''), files); break;
         }
         case '/api/permission': { const p = findPerm(b.id); if (p) p.resolve(!!b.allow, !!b.always); break; }
