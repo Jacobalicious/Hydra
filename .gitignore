@@ -1,0 +1,4 @@
+node_modules/
+*.log
+test-data/
+plugins/token-diet/token-diet.log

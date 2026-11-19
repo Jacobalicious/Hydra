@@ -1,0 +1,6 @@
+{
+  "name": "token-diet",
+  "version": "0.4.1",
+  "description": "Clears and compacts context on its own and caps screenshot resolution.",
+  "license": "MIT"
+}

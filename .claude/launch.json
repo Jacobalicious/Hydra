@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "multiclaude", "runtimeExecutable": "node", "runtimeArgs": ["server.mjs", "--no-open"], "port": 4517 },
+    {
+      "name": "multiclaude-test",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server.mjs", "--no-open"],
+      "port": 4521,
+      "autoPort": false,
+      "env": {
+        "MULTICLAUDE_PORT": "4521",
+        "MULTICLAUDE_DATA": "test-data/data",
+        "MULTICLAUDE_PROJECTS": "test-data/projects"
+      }
+    }
+  ]
+}
