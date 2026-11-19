@@ -836,7 +836,10 @@ function syncWorkers() {
 }
 function drawProjects() {
   if (drag?.on) return;   // don't pull the list out from under a drag (it redraws when the drag ends)
-  const pinned = (S?.pinned || []).map(x => projects.find(p => p.path === x)).filter(Boolean);
+  // Projects Claude is working in (or waiting on you / an account) float to the top; the rest keep his order.
+  const active = p => { const l = liveOf(p.path); return l && l.dot !== 'done' ? 1 : 0; };
+  const pinned = (S?.pinned || []).map(x => projects.find(p => p.path === x)).filter(Boolean)
+    .map((p, i) => [p, i]).sort((a, b) => active(b[0]) - active(a[0]) || a[1] - b[1]).map(x => x[0]);
   let html = `<div class="group">Main projects</div>`;
   html += pinned.length ? `<div class="dlist" data-kind="pinned">${pinned.map(mainRow).join('')}</div>`
     : `<div class="pinhint">Pin the few projects you're actually working on and they stay up here. Everything else lives in <b>All projects</b>.<br><button class="btn sm" data-act="all">${ic('star', 'sm')}Choose main projects</button></div>`;
