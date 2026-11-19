@@ -1,5 +1,5 @@
 ## Done
-- Renamed to Hydra (page, app name, shortcuts, setup, env vars HYDRA_*). Public at github.com/the owneralicious/Hydra (one squashed commit, no personal info).
+- Renamed to Hydra (page, app name, shortcuts, setup, env vars HYDRA_*). Public at github.com/Jacobalicious/Hydra (one squashed commit, no personal info).
 - Shareable: name + projects folder come from config.json in the data folder (me.mjs, never hardcode a name); setup.ps1 + README set up a new PC.
 - token-diet is built in (plugins/token-diet), loaded in every chat.
 - Data folder is ~/.hydra, falling back to an existing ~/.multiclaude (where the owner's logins and chats live).
