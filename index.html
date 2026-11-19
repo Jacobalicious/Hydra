@@ -1513,6 +1513,18 @@ function qPick(id, qi, label) {
   setTimeout(() => { if (qState[id] === st && (st.step || 0) === qi) qNext(id); }, 160);   // a beat to see the pick land
 }
 // Number keys pick, Enter moves on, as long as he is not typing somewhere else.
+// Arrow keys skip 5 s in the chat video last played or clicked (unless typing somewhere).
+let lastVid = null;
+document.addEventListener('play', e => { if (e.target.tagName === 'VIDEO') lastVid = e.target; }, true);
+document.addEventListener('pointerdown', e => { if (e.target.tagName === 'VIDEO') lastVid = e.target; }, true);
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey || e.altKey || !lastVid?.isConnected) return;
+  const a = document.activeElement;
+  if (a && a !== lastVid && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable)) return;
+  const d = { ArrowLeft: -5, ArrowRight: 5 }[e.key]; if (!d) return;
+  e.preventDefault(); e.stopPropagation();
+  lastVid.currentTime = Math.max(0, Math.min(lastVid.duration || 0, lastVid.currentTime + d));
+}, true);
 document.addEventListener('keydown', e => {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   const card = document.querySelector('#perms .qcard'); if (!card) return;

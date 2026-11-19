@@ -1581,7 +1581,17 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'GET' && url.pathname === '/api/file') {
       const f = uploadPath(url.searchParams.get('id'));
-      res.writeHead(200, { 'Content-Type': TYPES[path.extname(f).toLowerCase()] || 'application/octet-stream', 'Cache-Control': 'max-age=86400', 'Content-Disposition': `inline; filename="${path.basename(f).replace(/"/g, '')}"`, 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'" });
+      const size = fs.statSync(f).size;
+      const head = { 'Content-Type': TYPES[path.extname(f).toLowerCase()] || 'application/octet-stream', 'Cache-Control': 'max-age=86400', 'Accept-Ranges': 'bytes', 'Content-Disposition': `inline; filename="${path.basename(f).replace(/"/g, '')}"`, 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'" };
+      // Byte ranges, so videos can seek (drag the bar, arrow keys) instead of only playing from the start.
+      const m = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
+      if (m && size && (m[1] || m[2])) {
+        let start = m[1] ? +m[1] : Math.max(0, size - +m[2]), end = m[1] && m[2] ? Math.min(+m[2], size - 1) : size - 1;
+        if (start >= size || start > end) { res.writeHead(416, { 'Content-Range': `bytes */${size}` }); return res.end(); }
+        res.writeHead(206, { ...head, 'Content-Range': `bytes ${start}-${end}/${size}`, 'Content-Length': end - start + 1 });
+        fs.createReadStream(f, { start, end }).pipe(res); return;
+      }
+      res.writeHead(200, { ...head, 'Content-Length': size });
       fs.createReadStream(f).pipe(res); return;
     }
     if (req.method === 'POST' && url.pathname === '/api/upload') {
