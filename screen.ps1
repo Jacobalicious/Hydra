@@ -1,6 +1,6 @@
-# MultiClaude's hands and eyes: takes screenshots and sends mouse/keyboard
+# Hydra's hands and eyes: takes screenshots and sends mouse/keyboard
 # input. screen.mjs keeps one copy running and talks to it one JSON line at a
-# time over stdin/stdout. Ends by itself when MultiClaude closes stdin.
+# time over stdin/stdout. Ends by itself when Hydra closes stdin.
 $ErrorActionPreference = 'Stop'
 
 Add-Type -TypeDefinition @'

@@ -1,4 +1,4 @@
-# MultiClaude
+# Hydra
 
 A local web page for chatting with Claude Code about any folder in your
 projects folder. When one Claude account runs out of usage, the chat moves to
@@ -16,27 +16,27 @@ and use your screen (asks first), and chats can start helper chats.
 ## Set it up
 1. Download it:
    ```
-   git clone https://github.com/Jacobalicious/MultiClaude.git
+   git clone https://github.com/Jacobalicious/Hydra.git
    ```
 2. Run the setup in that folder (Windows PowerShell):
    ```
-   cd MultiClaude
+   cd Hydra
    powershell -ExecutionPolicy Bypass -File .\setup.ps1
    ```
    It installs the parts, asks your name, your projects folder and how many
    accounts you have, then opens a browser to sign in each account once
    (use a different account each time). Last, it makes desktop and Start menu
    shortcuts.
-3. Open **MultiClaude** from the desktop shortcut. The page is http://127.0.0.1:4517.
+3. Open **Hydra** from the desktop shortcut. The page is http://127.0.0.1:4517.
 
-**Stop MultiClaude** is in the Start menu. Run `setup.ps1` again any time to
+**Stop Hydra** is in the Start menu. Run `setup.ps1` again any time to
 add an account or change your name or projects folder.
 
 ## Good to know
-- Your settings and chats live in `%USERPROFILE%\.multiclaude`, not in this folder.
+- Your settings and chats live in `%USERPROFILE%\.hydra`, not in this folder.
   `config.json` there has your name and projects folder.
 - Rules you want every chat to follow go in `%USERPROFILE%\.claude\CLAUDE.md`
-  (your normal Claude Code one); MultiClaude passes it to every account.
+  (your normal Claude Code one); Hydra passes it to every account.
 - Each project keeps a `HANDOFF.md` note so the next account can carry on.
-- Update: `git pull`, then `npm.cmd install`, then Stop MultiClaude and open it again.
-- Logs if something breaks: `%USERPROFILE%\.multiclaude\server-errors.log`.
+- Update: `git pull`, then `npm.cmd install`, then Stop Hydra and open it again.
+- Logs if something breaks: `%USERPROFILE%\.hydra\server-errors.log`.

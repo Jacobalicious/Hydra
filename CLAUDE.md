@@ -1,4 +1,4 @@
-# MultiClaude
+# Hydra
 
 A local Node server + one HTML page
 that lets the user chat with Claude Code about any folder in `C:\Projects`, and
@@ -22,15 +22,15 @@ Keep it small: no framework, no build step.
   Screenshots are 1024x640; `zoom` reads small text; `batch` = several actions, one screenshot.
   SDK gotcha: one invalid field in `agents` (e.g. `autoCompactWindow` < 100000) silently
   drops *every* custom agent; the CLI debug log says "Error parsing agents".
-- `mcp__multiclaude__new_chat` (in server.mjs, project chats only): Claude closes its own chat
+- `mcp__hydra__new_chat` (in server.mjs, project chats only): Claude closes its own chat
   after the reply and starts a fresh one from HANDOFF.md with the task it gave.
 - Workers (`start_worker` / `message_worker` / `close_worker`, project chats only): the lead chat
-  starts up to 3 separate chats, each in a git worktree under `~/.multiclaude/workers/` on branch
+  starts up to 3 separate chats, each in a git worktree under `~/.hydra/workers/` on branch
   `worker/<name>`, on the lead's account. They are ordinary runs keyed by the worktree path
   (`state.workers[path]` = lead, name, branch, task). A worker's finished reply goes to the lead as
   a message (`reportToLead`, queued per lead); the lead merges and closes. Workers get
   `WORKER_RULES`, never ping the user, and the lead's "done" alert waits until all its workers reported.
-- `mcp__multiclaude__show` (every chat): copies files into `uploads/` and adds a `shared` chat item,
+- `mcp__hydra__show` (every chat): copies files into `uploads/` and adds a `shared` chat item,
   so pictures/videos/files show inline on any device (a phone via Tailscale). Backstop
   (`autoShow`): at the end of a turn, pictures/videos the reply names that exist and weren't shown get shown.
 - Phone alerts: `push.mjs` (Web Push done with node:crypto, no package; keys + phone
@@ -50,30 +50,30 @@ Keep it small: no framework, no build step.
   runnable; useful when Claude Code updates and something looks off.
 
 ## Run
-`npm install` once. The user starts it from the **MultiClaude** shortcut (desktop / Start menu)
-or `MultiClaude.cmd`: both run `launcher/start.ps1`, which starts the server hidden in the
-background (output in `~/.multiclaude/server.log` and `server-errors.log`) if it is not
-already up, then opens http://127.0.0.1:4517. **Stop MultiClaude** (Start menu,
+`npm install` once. The user starts it from the **Hydra** shortcut (desktop / Start menu)
+or `Hydra.cmd`: both run `launcher/start.ps1`, which starts the server hidden in the
+background (output in `~/.hydra/server.log` and `server-errors.log`) if it is not
+already up, then opens http://127.0.0.1:4517. **Stop Hydra** (Start menu,
 `launcher/stop.ps1`, `-Force` for no prompts) kills it and its Claude Code processes, no questions asked.
 `launcher/install-shortcuts.ps1` (re)makes the shortcuts; `-AtLogin` / `-NoLogin`
 adds/removes starting at Windows sign-in. To restart after a code change:
-`stop.ps1 -Force` then `start.ps1`. Both honour `MULTICLAUDE_PORT` (and start.ps1
-`MULTICLAUDE_DATA`), so they can be tested on a spare port.
+`stop.ps1 -Force` then `start.ps1`. Both honour `HYDRA_PORT` (and start.ps1
+`HYDRA_DATA`), so they can be tested on a spare port.
 **Don't start the real one with `node server.mjs` inside a Claude chat's terminal tab or a
 background Bash**: it dies when that chat closes (that is what took the site down once).
 `node server.mjs` in a visible window is still the way to watch it for debugging.
 Not `npm start`:
 Windows PowerShell often blocks `npm.ps1` (script execution is disabled), so give
 `node server.mjs` (or `npm.cmd start`).
-Test copy without touching real data: set `MULTICLAUDE_PORT`, `MULTICLAUDE_DATA`
-(data folder) and `MULTICLAUDE_PROJECTS` (projects root) and add `--no-open`.
-`MULTICLAUDE_FRESH_AT=30000` lowers the size (default 100k tokens) at which a project
+Test copy without touching real data: set `HYDRA_PORT`, `HYDRA_DATA`
+(data folder) and `HYDRA_PROJECTS` (projects root) and add `--no-open`.
+`HYDRA_FRESH_AT=30000` lowers the size (default 100k tokens) at which a project
 chat writes its note and closes, so the next message starts fresh; handy for testing that.
-`MULTICLAUDE_TEST_FORCE=account-N` makes the next pick use that account even if
+`HYDRA_TEST_FORCE=account-N` makes the next pick use that account even if
 it is out, to exercise the real "ran out mid-message" path.
 `.claude/launch.json` has a preview config. Take screenshots at scale 0.5.
 
-## Data (outside the repo, `%USERPROFILE%\.multiclaude`)
+## Data (outside the repo, `%USERPROFILE%\.hydra`)
 `accounts.json` (id + configDir per account; JSON, so backslashes doubled),
 `state.json` also holds `pinned` (their "main projects", top of the sidebar),
 `chats/<name>.<time>.json` = past conversations (shown read-only from the ⋯ menu),
@@ -100,4 +100,4 @@ they get `QUICK_RULES` from prompts.mjs and may search the web; their chat file 
   Commits must never carry a Claude trailer.
 - Never `process.exit()`; set `process.exitCode`.
 
-token-diet: every chat loads the built-in mod in `plugins/token-diet` (override with `MULTICLAUDE_DIET`; silently skipped if missing). It clears/compacts context on its own and halves screenshot size. Its `ui_status` line shows beside the chips; `/diet` replies as local_command_output.
+token-diet: every chat loads the built-in mod in `plugins/token-diet` (override with `HYDRA_DIET`; silently skipped if missing). It clears/compacts context on its own and halves screenshot size. Its `ui_status` line shows beside the chips; `/diet` replies as local_command_output.

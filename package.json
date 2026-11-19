@@ -1,5 +1,5 @@
 {
-  "name": "multiclaude",
+  "name": "hydra",
   "version": "0.1.0",
   "description": "Chat with Claude Code about any project, switching accounts when one runs out",
   "main": "server.mjs",

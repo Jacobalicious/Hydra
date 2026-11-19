@@ -1,8 +1,8 @@
 // Does a picked model actually answer? Start on one model, then switch mid-chat with setModel.
 // Usage: node probes/model-sticks.mjs account-2 "claude-fable-5-1[1m]"
 import { query } from '@anthropic-ai/claude-agent-sdk';
-import os from 'node:os'; import path from 'node:path';
-const DATA = process.env.MULTICLAUDE_DATA || path.join(os.homedir(), '.multiclaude');
+import os from 'node:os'; import path from 'node:path'; import fs from 'node:fs';
+const DATA = process.env.HYDRA_DATA || (() => { const n = path.join(os.homedir(), '.hydra'), old = path.join(os.homedir(), '.multiclaude'); return !fs.existsSync(n) && fs.existsSync(old) ? old : n; })();
 const [id = 'account-2', model = 'claude-fable-5-1[1m]'] = process.argv.slice(2);
 let push; const queue = [];
 const iter = (async function* () { while (true) { if (queue.length) yield queue.shift(); else await new Promise(r => (push = r)); } })();

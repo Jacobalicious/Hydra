@@ -1,4 +1,4 @@
-# First-time setup for MultiClaude on a new PC. Safe to run again.
+# First-time setup for Hydra on a new PC. Safe to run again.
 # Run it from this folder in Windows PowerShell:
 #   powershell -ExecutionPolicy Bypass -File .\setup.ps1
 # It installs the parts, asks your name, where your projects live and how
@@ -6,14 +6,14 @@
 
 $ErrorActionPreference = 'Stop'
 $app = $PSScriptRoot
-$data = if ($env:MULTICLAUDE_DATA) { $env:MULTICLAUDE_DATA } else { Join-Path $env:USERPROFILE '.multiclaude' }
+$data = if ($env:HYDRA_DATA) { $env:HYDRA_DATA } elseif (-not (Test-Path (Join-Path $env:USERPROFILE '.hydra')) -and (Test-Path (Join-Path $env:USERPROFILE '.multiclaude'))) { Join-Path $env:USERPROFILE '.multiclaude' } else { Join-Path $env:USERPROFILE '.hydra' }
 
 function Ask($question, $default) {
   $a = Read-Host "$question [$default]"
   if ([string]::IsNullOrWhiteSpace($a)) { return $default } else { return $a.Trim() }
 }
 
-Write-Host "`n== MultiClaude setup ==`n" -ForegroundColor Cyan
+Write-Host "`n== Hydra setup ==`n" -ForegroundColor Cyan
 
 # 1. Node.js
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
@@ -24,7 +24,7 @@ if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
 $major = [int]((node -v).TrimStart('v').Split('.')[0])
 if ($major -lt 20) { Write-Host "Node $(node -v) is too old; install version 20 or newer from https://nodejs.org" -ForegroundColor Yellow; return }
 
-# 2. The parts MultiClaude needs
+# 2. The parts Hydra needs
 Write-Host 'Installing the parts (npm install)...'
 Push-Location $app
 try { & npm.cmd install --no-fund --no-audit | Out-Host } finally { Pop-Location }
@@ -69,5 +69,5 @@ foreach ($a in $accounts) {
 # 5. Shortcuts
 & (Join-Path $app 'launcher\install-shortcuts.ps1')
 
-Write-Host "`nAll set. Open MultiClaude from the desktop shortcut (or the Start menu)." -ForegroundColor Green
+Write-Host "`nAll set. Open Hydra from the desktop shortcut (or the Start menu)." -ForegroundColor Green
 Write-Host 'Run this again any time to add an account or change your name or projects folder.'

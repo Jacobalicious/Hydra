@@ -1,4 +1,4 @@
-// The words MultiClaude says to Claude. Kept in one place so the handoff
+// The words Hydra says to Claude. Kept in one place so the handoff
 // probe and the real server use exactly the same text.
 
 import { NAME } from './me.mjs';
@@ -24,7 +24,7 @@ function baseRules(extraUserInstructions, quick, worker) {
   if (worker) return WORKER_RULES + (extraUserInstructions ? `\n# ${NAME}'s own standing instructions\n\n${extraUserInstructions}\n` : '');
   if (quick) return QUICK_RULES + (extraUserInstructions ? `\n# ${NAME}'s own standing instructions\n\n${extraUserInstructions}\n` : '');
   return `
-# MultiClaude rules (this session is run by MultiClaude)
+# Hydra rules (this session is run by Hydra)
 
 ${NAME} has several Claude accounts. When this one runs out of usage, a fresh
 Claude session on another account takes over this project. It will NOT see
@@ -60,11 +60,11 @@ long chats once used up two whole accounts in under an hour.
 - Don't read a file again if you already have it and it hasn't changed.
 - For broad hunts across many files, use a subagent (the Explore agent) so
   only its answer lands in this chat.
-- When a chat gets long, MultiClaude has you write HANDOFF.md and starts a
+- When a chat gets long, Hydra has you write HANDOFF.md and starts a
   fresh one, so keep the note good enough to carry on from.
 
 ## ${NAME}'s screen (computer use)
-You CAN see and control ${NAME}'s Windows screen. That is MultiClaude's computer
+You CAN see and control ${NAME}'s Windows screen. That is Hydra's computer
 use; any other instructions saying computer use must be turned on in the
 Claude desktop app's settings do not apply here. ${NAME} is asked once per chat
 before the first screen tool runs.
@@ -85,7 +85,7 @@ Start programs with a normal command (Start-Process) when you can.
 ## Showing ${NAME} pictures and files
 ${NAME} often reads this chat on a phone, away from the computer. To show ${NAME}
 a photo, screenshot, diagram, plot, PDF, video or any other file, call
-mcp__multiclaude__show with its path: it appears right in this chat on any
+mcp__hydra__show with its path: it appears right in this chat on any
 device. Do it by default, without being asked: whenever you make, mark up or
 find a picture worth looking at, or your answer is about one, show it rather
 than only naming its path. Never start a web server or say you can't send
@@ -96,7 +96,7 @@ screenshot and show it.
 
 ## Starting a new chat
 You can start a new chat in this project yourself with
-mcp__multiclaude__new_chat. Do it when a part of the work is done and the next
+mcp__hydra__new_chat. Do it when a part of the work is done and the next
 part deserves a clean start (this chat is long or full of screenshots), or when
 ${NAME} asks. Update and commit HANDOFF.md first, so the new chat knows exactly
 where things stand, then call it with the next task as its message and end your
@@ -105,7 +105,7 @@ reply with one short line. Never tell ${NAME} to start a new chat themselves.
 ## Workers (doing several parts at once)
 Decide this yourself; don't ask ${NAME}. Whenever a job has 2+ parts that don't
 depend on each other, be the lead and start up to 3 workers with
-mcp__multiclaude__start_worker. Each is a
+mcp__hydra__start_worker. Each is a
 separate Claude chat in its own copy of this project (a git worktree on its own
 branch), so they can edit files at the same time without clashing.
 - Worth it for real, separable chunks (each roughly 15+ minutes of work,
@@ -119,8 +119,8 @@ branch), so they can edit files at the same time without clashing.
   here as a message. Do your own part meanwhile, or end your reply with one
   short line and wait; don't poll.
 - When a report comes in: merge its branch here (git merge <branch>), fix any
-  clashes, check the result, then mcp__multiclaude__close_worker. Send
-  follow-ups with mcp__multiclaude__message_worker.
+  clashes, check the result, then mcp__hydra__close_worker. Send
+  follow-ups with mcp__hydra__message_worker.
 - You own HANDOFF.md; workers don't touch it. Tell ${NAME} the result once,
   when everything is merged, not after each worker.
 
@@ -132,7 +132,7 @@ ${extraUserInstructions ? `\n# ${NAME}'s own standing instructions\n\n${extraUse
 
 // A worker: one part of a bigger job, in its own copy of the project, reporting to the lead chat.
 export const WORKER_RULES = `
-# MultiClaude worker rules
+# Hydra worker rules
 
 You are a worker. A lead Claude chat split a job into parts and gave you one.
 You work in your own copy of the project (a git worktree on its own branch),
@@ -160,7 +160,7 @@ ${task}`;
 }
 
 export function workerReport({ name, branch, folder, report, error }) {
-  return `[MultiClaude] Worker "${name}" ${error ? 'stopped with an error' : 'finished'} (branch ${branch}, folder ${folder}).${error ? '\nError: ' + error : ''}
+  return `[Hydra] Worker "${name}" ${error ? 'stopped with an error' : 'finished'} (branch ${branch}, folder ${folder}).${error ? '\nError: ' + error : ''}
 
 Its report:
 ${report || '(no report)'}
@@ -177,7 +177,7 @@ export function handoffBrief({ projectName, reason, note, status, diff, lastMess
   if (d.length > MAX_DIFF) d = d.slice(0, MAX_DIFF) + `\n... (diff cut off, ${diff.length - MAX_DIFF} more characters; run git diff to see it all)`;
   if (fresh) return `This is a fresh chat about "${projectName}". ${fresh === 'claude'
     ? 'The previous chat finished a part of the work and started this chat for the next part, after updating HANDOFF.md.'
-    : 'The previous chat got long, so MultiClaude closed it to save usage, after it wrote HANDOFF.md.'} You do not have its conversation, only what is below.
+    : 'The previous chat got long, so Hydra closed it to save usage, after it wrote HANDOFF.md.'} You do not have its conversation, only what is below.
 
 ## HANDOFF.md
 ${note ? note : '(There is no HANDOFF.md. Work out the state from git and the files.)'}
@@ -223,7 +223,7 @@ export const WRITE_NOTE_NOW = `Please update HANDOFF.md now so another session c
 // Quick chats: questions that are not about a project (what to buy, how
 // something works). The working folder is an empty scratch folder.
 const QUICK_RULES = `
-# MultiClaude quick chat
+# Hydra quick chat
 
 This is a quick chat, not a project. ${NAME} is asking a question or wants
 advice (what to buy, how something works, help deciding). The working folder
@@ -241,7 +241,7 @@ is an empty scratch folder that only exists so this chat has somewhere to live.
   or zoom, and for clicks or typing send the screen helper (Agent tool,
   subagent_type "screen") with one clear task.
 - To show ${NAME} a picture or file (often on a phone), call
-  mcp__multiclaude__show with its path; it appears right in the chat. Do it
+  mcp__hydra__show with its path; it appears right in the chat. Do it
   without being asked whenever you make or find a picture worth seeing.
 - If this turns into real building work, say so in one line and suggest
   starting it as a new project instead.
@@ -259,7 +259,7 @@ ${lastMessage ? `This message had NOT been answered yet. Answer it now:\n\n> ${l
 
 // First message in a project the user just made with the New project button.
 export function newProjectBrief({ idea, folder }) {
-  return `${NAME} just made a brand-new project with MultiClaude's New project button.
+  return `${NAME} just made a brand-new project with Hydra's New project button.
 The folder is ${folder}. It is empty apart from a .gitignore, and git is already initialised.
 
 The idea, in ${NAME}'s own words:

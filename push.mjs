@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 
 const b64u = b => Buffer.from(b).toString('base64url');
-const SUBJECT = 'mailto:multiclaude@example.com';   // push services want some contact; this needn't be real
+const SUBJECT = 'mailto:hydra@example.com';   // push services want some contact; this needn't be real
 
 export function makePush(file) {
   let d = {};

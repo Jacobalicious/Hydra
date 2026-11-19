@@ -16,3 +16,5 @@
 - Outside auto mode, commands like the lead's git merge still ask the user first; workers copy the lead's mode (plan becomes acceptEdits).
 - Worker folders: Windows keeps them busy briefly after close, so removal retries after 5 s and leftovers are swept at startup.
 - earliestReset() only counts accounts that are still out, so never use "has it passed" as a gate.
+- The status-dot files in ~/.claude/status-dot keep the "multiclaude-" prefix on purpose (an outside tray tool reads them).
+- The local folder is still C:\Projects\Side Quest\MultiClaude; only the app and repo were renamed.

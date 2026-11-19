@@ -1,4 +1,4 @@
-// MultiClaude's service worker: shows phone notifications sent by the server
+// Hydra's service worker: shows phone notifications sent by the server
 // (Web Push), even when the page is closed or the phone is locked.
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
@@ -9,10 +9,10 @@ self.addEventListener('push', e => {
   e.waitUntil((async () => {
     const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     const looking = wins.some(w => w.visibilityState === 'visible');
-    await self.registration.showNotification(d.title || 'MultiClaude', {
+    await self.registration.showNotification(d.title || 'Hydra', {
       body: d.body || '',
       icon: '/icon-192.png',
-      tag: d.project || d.title || 'multiclaude',   // a newer alert for the same project replaces the old one
+      tag: d.project || d.title || 'hydra',   // a newer alert for the same project replaces the old one
       renotify: true,
       silent: looking,                              // he is already looking at the page: no buzz
       data: { project: d.project || null },

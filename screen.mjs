@@ -1,5 +1,5 @@
 // Lets a chat see and use the user's screen: screenshot, click, type, keys.
-// The Claude desktop app has this built in, but MultiClaude's chats run through
+// The Claude desktop app has this built in, but Hydra's chats run through
 // the Agent SDK and do not get it, so this is our own small version.
 // The real work is done by screen.ps1, kept running and fed one JSON line at a time.
 import { spawn } from 'node:child_process';

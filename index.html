@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>MultiClaude</title>
+<title>Hydra</title>
 <link rel="icon" href="/icon.svg?v=2" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2">
 <link rel="manifest" href="/manifest.json?v=2">
@@ -586,7 +586,7 @@ svg.i.xs { width: 13px; height: 13px; }
   <main id="main">
     <header id="top">
       <button class="iconbtn" id="menuBtn" title="Projects"></button>
-      <div class="ptitle"><div class="t" id="ptitle">MultiClaude</div><div class="m" id="pmeta"></div></div>
+      <div class="ptitle"><div class="t" id="ptitle">Hydra</div><div class="m" id="pmeta"></div></div>
       <div class="topacts" id="topacts"></div>
     </header>
     <div id="pastbar"></div>
@@ -1363,7 +1363,7 @@ function drawAll() {
       <button class="iconbtn" id="newchat" title="${p.quick ? 'New quick chat' : 'New conversation'}">${ic('chatPlus')}</button>
       <button class="iconbtn" id="more" title="More">${ic('more')}</button>`;
   } else {
-    $('#ptitle').textContent = 'MultiClaude'; $('#pmeta').innerHTML = '<span>Pick a project to start</span>'; $('#topacts').innerHTML = '';
+    $('#ptitle').textContent = 'Hydra'; $('#pmeta').innerHTML = '<span>Pick a project to start</span>'; $('#topacts').innerHTML = '';
   }
 
   // looking at an old conversation
@@ -1411,7 +1411,7 @@ function drawAll() {
   $('#modStatus').textContent = run?.status || '';
 
   const working = (S.runs || []).filter(r => r.busy).length;
-  document.title = (S.perms.length ? '● ' : working > 1 ? `(${working}) ` : working ? '… ' : '') + (p ? p.name.split('\\').pop() + ' · ' : '') + 'MultiClaude';
+  document.title = (S.perms.length ? '● ' : working > 1 ? `(${working}) ` : working ? '… ' : '') + (p ? p.name.split('\\').pop() + ' · ' : '') + 'Hydra';
   drawProjects();
 }
 function tickCountdown() { const el = $('#countdown'); if (el && S?.waiting?.length) el.textContent = S.resumeAt ? span(S.resumeAt - Date.now()) : '…'; }
@@ -1426,7 +1426,7 @@ function drawStatus() {
   const cur = lastTodos?.find(t => t.status === 'in_progress');
   const prog = busyHere && lastTodos ? `<span class="prog">${ic('list', 'xs')} ${lastTodos.filter(t => t.status === 'completed').length}/${lastTodos.length}${cur ? ' · ' + esc(cur.text) : ''}</span>` : '';
   let html = '';
-  if (!navigator.onLine || offline) html = `<span style="color:var(--bad)">Lost touch with MultiClaude on the PC. Reconnecting…</span>`;
+  if (!navigator.onLine || offline) html = `<span style="color:var(--bad)">Lost touch with Hydra on the PC. Reconnecting…</span>`;
   else if (busyHere) html = permsOf(current).length ? `<span style="color:var(--accent)">Waiting for your OK</span>` : `<span class="dots"><i></i><i></i><i></i></span><span>Claude is working</span><span class="tm">${run.turnStart ? clock(Date.now() - run.turnStart) : ''}</span>${prog}`;
   else if (waitingHere) html = 'Waiting for an account to reset…';
   else if (elsewhere) html = `<span style="color:var(--faint)">Claude is also working in ${elsewhere === 1 ? 'one other project' : elsewhere + ' other projects'}</span>`;
@@ -1641,7 +1641,7 @@ $('#showphone').onclick = () => {
     body = `<p>Scan this with your phone's camera. The phone needs Tailscale switched on.</p>
       <div class="qr">${qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true })}</div>
       <div class="urlbox">${esc(ph.url)}</div>
-      <p style="font-size:13px;color:var(--muted)">Only devices signed in to your Tailscale can open it. The PC has to be on with MultiClaude running. Once it opens, use <b>Add to Home Screen</b> to get an app icon.</p>`;
+      <p style="font-size:13px;color:var(--muted)">Only devices signed in to your Tailscale can open it. The PC has to be on with Hydra running. Once it opens, use <b>Add to Home Screen</b> to get an app icon.</p>`;
   } else if (ph.url) {
     body = `<p>Tailscale is running on this PC, but phone access isn't switched on yet. Paste this in the Terminal panel on the PC:</p>
       <pre class="cmd">tailscale serve --bg ${ph.port}</pre>
@@ -1655,7 +1655,7 @@ $('#showphone').onclick = () => {
     if (pushSub) { alerts = `<p><b>Alerts are on for this phone</b>, even with the page closed or the phone locked.</p>`; btn = `<button class="btn" id="notifTest">${ic('bell', 'sm')}Send a test alert</button>`; }
     else if (canPush && Notification.permission === 'denied') alerts = `<p><b>Alerts are blocked</b> for this site in your browser's settings. Allow notifications for it there, then open this again.</p>`;
     else if (canPush) { alerts = `<p>Want a buzz when Claude is done or needs you, even with the page closed?</p>`; btn = `<button class="btn" id="notifOn">${ic('bell', 'sm')}Alert me on this phone</button>`; }
-    else if (isIOS) alerts = `<p><b>For alerts on iPhone</b>, open MultiClaude from its home-screen icon (Share, then <b>Add to Home Screen</b>), then tap this button again from there.</p>`;
+    else if (isIOS) alerts = `<p><b>For alerts on iPhone</b>, open Hydra from its home-screen icon (Share, then <b>Add to Home Screen</b>), then tap this button again from there.</p>`;
     else alerts = `<p>This browser can't show alerts. Chrome on Android can.</p>`;
   }
   modal('Use it on your phone', body + alerts, `${btn}<button class="btn primary" data-close>Done</button>`);
@@ -1814,12 +1814,12 @@ $('#slash').onclick = e => { const c = e.target.closest('.sc'); if (c) pickSlash
 let offline = false, es = null;
 const PAGE_VERSION = '__PAGE_VERSION__';
 let staleBanner = false;
-// MultiClaude was updated since this page loaded: reload, unless he is mid-typing.
+// Hydra was updated since this page loaded: reload, unless he is mid-typing.
 let staleServer = false;
 function pageUpdated() {
   if (!$('#text').value.trim()) { location.reload(); return; }
   if (staleBanner) return; staleBanner = true;
-  toast('MultiClaude was updated', 'It will refresh once you send or clear your message.');
+  toast('Hydra was updated', 'It will refresh once you send or clear your message.');
   const t = setInterval(() => { if (!$('#text').value.trim()) { clearInterval(t); location.reload(); } }, 2000);
 }
 function connect() {
@@ -1831,7 +1831,7 @@ function connect() {
     const ev = JSON.parse(e.data);
     if (ev.type === 'hello') {
       if (ev.page !== PAGE_VERSION && !PAGE_VERSION.startsWith('__')) pageUpdated();
-      else if (ev.stale && !staleServer) { staleServer = true; toast('Restart MultiClaude to finish updating', 'Use Stop MultiClaude, then open MultiClaude again. Until then some buttons may say "Not found".', true); }
+      else if (ev.stale && !staleServer) { staleServer = true; toast('Restart Hydra to finish updating', 'Use Stop Hydra, then open Hydra again. Until then some buttons may say "Not found".', true); }
     }
     else if (ev.type === 'state') { S = ev.state; offline = false; syncWorkers(); drawAll(); markSeen(); }
     else if (ev.type === 'chat' && ev.project === current && past) past.saved.push(ev.item);

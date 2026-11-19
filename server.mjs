@@ -1,4 +1,4 @@
-// MultiClaude: one page to chat with Claude Code about any folder, moving
+// Hydra: one page to chat with Claude Code about any folder, moving
 // between several Claude accounts when one runs out.
 // Listens on 127.0.0.1 only. The phone reaches it through `tailscale serve`,
 // which forwards https://<pc>.<tailnet>.ts.net to this port, so nothing else on
@@ -21,7 +21,7 @@ import { sessionRules, handoffBrief, quickHandoffBrief, newProjectBrief, workerB
 const execFileP = promisify(execFile);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const HOME = os.homedir();
-const PORT = Number(process.env.MULTICLAUDE_PORT || 4517);
+const PORT = Number(process.env.HYDRA_PORT || 4517);
 const HOST = '127.0.0.1';
 const CHATS_DIR = path.join(DATA_DIR, 'chats');
 const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
@@ -33,7 +33,7 @@ const STATE_FILE = path.join(DATA_DIR, 'state.json');
 const LOG_FILE = path.join(DATA_DIR, 'switch-log.txt');
 // The token-diet mod (plugins/token-diet), loaded into every chat. Must be a plain
 // Windows path: a %20-style path silently loads nothing.
-const DIET_DIR = process.env.MULTICLAUDE_DIET || path.join(HERE, 'plugins', 'token-diet');
+const DIET_DIR = process.env.HYDRA_DIET || path.join(HERE, 'plugins', 'token-diet');
 const plugins = () => fs.existsSync(path.join(DIET_DIR, '.claude-plugin', 'plugin.json')) ? [{ type: 'local', path: DIET_DIR }] : [];
 const DEFAULT_CONFIG_DIR = path.join(HOME, '.claude');
 const GLOBAL_CLAUDE_MD = path.join(DEFAULT_CONFIG_DIR, 'CLAUDE.md');
@@ -141,10 +141,10 @@ function syncDot() {
 // He wrote back, or took the project off his main list: clear its dot now.
 // dotSeen keeps its value, so a live chat is not rewritten until its state changes.
 function dotDismiss(project) { try { fs.rmSync(dotFile(project), { force: true }); } catch {} }
-// Anything still "working" or "needs you" from before MultiClaude last closed is not running any more.
+// Anything still "working" or "needs you" from before Hydra last closed is not running any more.
 try {
   for (const f of fs.readdirSync(DOT_DIR)) {
-    if (!f.startsWith('multiclaude-')) continue;
+    if (!f.startsWith('hydra-')) continue;
     try { if (JSON.parse(fs.readFileSync(path.join(DOT_DIR, f), 'utf8')).state !== 'done') fs.rmSync(path.join(DOT_DIR, f), { force: true }); } catch {}
   }
 } catch {}
@@ -167,7 +167,7 @@ $id = '{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershe
 [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($id).Show([Windows.UI.Notifications.ToastNotification]::new($t))`;
   try {
     const p = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps], {
-      env: { ...process.env, MC_TITLE: 'MultiClaude: ' + title, MC_BODY: body }, stdio: 'ignore', windowsHide: true,
+      env: { ...process.env, MC_TITLE: 'Hydra: ' + title, MC_BODY: body }, stdio: 'ignore', windowsHide: true,
     });
     p.on('error', () => {});
   } catch { /* notifications are best-effort */ }
@@ -188,10 +188,10 @@ function runInWindow(project, cmd) {
   const cwd = checkProject(project);
   cmd = String(cmd || '').trim();
   if (!cmd) throw new Error('That block is empty.');
-  const dir = path.join(os.tmpdir(), 'multiclaude-run'); fs.mkdirSync(dir, { recursive: true });
+  const dir = path.join(os.tmpdir(), 'hydra-run'); fs.mkdirSync(dir, { recursive: true });
   const f = path.join(dir, `run-${Date.now()}.ps1`);
   fs.writeFileSync(f, '﻿' + cmd + '\r\n', 'utf8');   // BOM so PowerShell 5.1 reads it as UTF-8
-  const line = `/c start "MultiClaude" powershell.exe -NoExit -ExecutionPolicy Bypass -File "${f}"`;
+  const line = `/c start "Hydra" powershell.exe -NoExit -ExecutionPolicy Bypass -File "${f}"`;
   const p = spawn('cmd.exe', [line], { cwd, stdio: 'ignore', windowsHide: true, detached: true, windowsVerbatimArguments: true });
   p.on('error', () => {}); p.unref();
 }
@@ -490,7 +490,7 @@ const accById = id => state.accounts.find(a => a.id === id);
 // logged in". Only the account's own folder may decide the login.
 const HOST_VARS = /^(CLAUDECODE|CLAUDE_CODE_.*|CLAUDE_AGENT_SDK_.*|CLAUDE_PID|CLAUDE_EFFORT|CLAUDE_PREVIEW_.*|ANTHROPIC_.*|USE_(LOCAL|STAGING)_OAUTH)$/i;
 const cleanEnv = Object.fromEntries(Object.entries(process.env).filter(([k]) => !HOST_VARS.test(k) && k.toUpperCase() !== 'CLAUDE_CONFIG_DIR'));
-const envFor = a => ({ ...cleanEnv, CLAUDE_AGENT_SDK_CLIENT_APP: 'multiclaude/0.2', CLAUDE_CONFIG_DIR: a.configDir });
+const envFor = a => ({ ...cleanEnv, CLAUDE_AGENT_SDK_CLIENT_APP: 'hydra/0.2', CLAUDE_CONFIG_DIR: a.configDir });
 const ms = iso => (iso ? Date.parse(iso) : null);
 
 // Work out from usage numbers whether (and until when) an account is out.
@@ -630,8 +630,8 @@ async function refreshAll() { for (const a of state.accounts) await refreshAccou
 function pickAccount(excludeId, peek = false, model = undefined) {
   // Test hook: force one account to be tried first even if it is out, to
   // exercise the "ran out mid-turn" path for real. Used once, then cleared.
-  const forced = !peek && process.env.MULTICLAUDE_TEST_FORCE && accById(process.env.MULTICLAUDE_TEST_FORCE);
-  if (forced && forced.id !== excludeId) { delete process.env.MULTICLAUDE_TEST_FORCE; return forced; }
+  const forced = !peek && process.env.HYDRA_TEST_FORCE && accById(process.env.HYDRA_TEST_FORCE);
+  if (forced && forced.id !== excludeId) { delete process.env.HYDRA_TEST_FORCE; return forced; }
   const cands = state.accounts.filter(a => a.id !== excludeId && usable(a, model));
   cands.sort((x, y) =>
     (isNear(x) - isNear(y)) ||
@@ -658,7 +658,7 @@ const IDLE_CLOSE = 30 * 60 * 1000;   // close a conversation nobody has used for
 // Every step re-reads the whole conversation, so a long one drains an account
 // fast. Once a project chat is this big after a reply, Claude writes the note
 // (cheap while it is still cached) and the next message starts a fresh chat.
-const FRESH_AT = Number(process.env.MULTICLAUDE_FRESH_AT) || 100000;
+const FRESH_AT = Number(process.env.HYDRA_FRESH_AT) || 100000;
 
 function makeInput() {
   const queue = []; let wake = null; let closed = false;
@@ -707,11 +707,11 @@ function toolLine(name, input = {}) {
     case 'AskUserQuestion': return 'Asked you a question';
     case 'ToolSearch': return 'Loaded more tools';
     case 'mcp__screen__batch': return `Did ${(input.actions || []).length} screen steps: ${(input.actions || []).map(a => a.action).join(', ')}`;
-    case 'mcp__multiclaude__new_chat': return 'Started a new chat for the next part';
-    case 'mcp__multiclaude__start_worker': return `Started a worker: ${input.name || ''}`;
-    case 'mcp__multiclaude__message_worker': return `Messaged worker ${input.worker || ''}`;
-    case 'mcp__multiclaude__close_worker': return `Closed worker ${input.worker || ''}`;
-    case 'mcp__multiclaude__show': return `Showed you ${(input.paths || []).map(p => base(p)).join(', ')}`;
+    case 'mcp__hydra__new_chat': return 'Started a new chat for the next part';
+    case 'mcp__hydra__start_worker': return `Started a worker: ${input.name || ''}`;
+    case 'mcp__hydra__message_worker': return `Messaged worker ${input.worker || ''}`;
+    case 'mcp__hydra__close_worker': return `Closed worker ${input.worker || ''}`;
+    case 'mcp__hydra__show': return `Showed you ${(input.paths || []).map(p => base(p)).join(', ')}`;
     default: return name.startsWith('mcp__') ? `Used ${name.split('__').slice(1).join(' › ')}` : `Used ${name}`;
   }
 }
@@ -757,7 +757,7 @@ function saveSetting(project, key, value) {
   persist();
 }
 
-// Tools MultiClaude itself gives a project chat. new_chat: the chat closes after
+// Tools Hydra itself gives a project chat. new_chat: the chat closes after
 // this reply and a fresh one starts from HANDOFF.md with the given first message.
 // Copies files Claude wants the user to see into uploads and puts them in the chat,
 // so they show up wherever he has the page open (his phone too).
@@ -802,9 +802,9 @@ function autoShow(r) {
 
 function makeChatServer(r, quick) {
   return createSdkMcpServer({
-    name: 'multiclaude', version: '1.0.0',
+    name: 'hydra', version: '1.0.0',
     tools: [
-      tool('show', "Show " + NAME + " pictures or files right in this chat: photos, screenshots, diagrams, plots, PDFs, videos, any file. They appear inline wherever he has MultiClaude open, including his phone, so this is THE way to show him an image. Give full paths, or paths relative to the project.",
+      tool('show', "Show " + NAME + " pictures or files right in this chat: photos, screenshots, diagrams, plots, PDFs, videos, any file. They appear inline wherever he has Hydra open, including his phone, so this is THE way to show him an image. Give full paths, or paths relative to the project.",
         { paths: z.array(z.string()).min(1).max(12).describe('Files to show'), caption: z.string().optional().describe('A short line shown with them') },
         async a => ({ content: [{ type: 'text', text: showFiles(r, a.paths, a.caption) }] })),
       ...(quick ? [] : [tool('new_chat', "Start a new chat in this project once this reply ends. This chat closes, and the new one gets HANDOFF.md, the uncommitted changes and your message as its task. Use it when one part of the work is done and the next part is better started fresh (this chat is long or full of screenshots), or when " + NAME + " asks for a new chat. Update and commit HANDOFF.md BEFORE calling it, then end your reply with one short line to the user.",
@@ -957,13 +957,13 @@ function startRun({ project, account, prompt, resume, lastUserMsg }) {
       systemPrompt: { type: 'preset', preset: 'claude_code', append: sessionRules(extraInstructions(account), isQuick(project), !!workerOf(project)) },
       settings: { includeCoAuthoredBy: false, attribution: { commit: '', pr: '' } },
       allowedTools: [
-        'mcp__multiclaude__new_chat', 'mcp__multiclaude__show',
-        'mcp__multiclaude__start_worker', 'mcp__multiclaude__message_worker', 'mcp__multiclaude__close_worker',
+        'mcp__hydra__new_chat', 'mcp__hydra__show',
+        'mcp__hydra__start_worker', 'mcp__hydra__message_worker', 'mcp__hydra__close_worker',
         ...['Bash', 'PowerShell'].flatMap(t => ['status', 'diff', 'log', 'add', 'commit'].map(g => `${t}(git ${g}:*)`)),
         `Read(${UPLOADS_DIR.replace(/\\/g, '/')}/**)`,
         ...(isQuick(project) ? ['WebSearch', 'WebFetch'] : []),
       ],
-      mcpServers: { screen: makeScreenServer(), multiclaude: makeChatServer(r, isQuick(project) || !!workerOf(project)) },
+      mcpServers: { screen: makeScreenServer(), hydra: makeChatServer(r, isQuick(project) || !!workerOf(project)) },
       agents: { screen: SCREEN_AGENT },
       hooks: { PreToolUse: screenHook() },
       plugins: plugins(),
@@ -1634,13 +1634,13 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.on('error', e => {
-  console.error(e.code === 'EADDRINUSE' ? `Port ${PORT} is already in use. MultiClaude may already be running: open http://${HOST}:${PORT}` : e);
+  console.error(e.code === 'EADDRINUSE' ? `Port ${PORT} is already in use. Hydra may already be running: open http://${HOST}:${PORT}` : e);
   process.exitCode = 1;
 });
 server.listen(PORT, HOST, async () => {
   const url = `http://${HOST}:${PORT}`;
   await checkTailscale();
-  console.log(`MultiClaude is running at ${url}  (close this window or press Ctrl+C to stop it)`);
+  console.log(`Hydra is running at ${url}  (close this window or press Ctrl+C to stop it)`);
   if (tailnet.name) console.log(tailnet.serving ? `On your phone: https://${tailnet.name}` : `Phone access is not switched on yet (see the phone button in the page).`);
   if (!process.argv.includes('--no-open')) spawn('cmd.exe', ['/c', 'start', '', url], { stdio: 'ignore', windowsHide: true }).on('error', () => {});
   refreshAll();
