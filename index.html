@@ -846,18 +846,9 @@ function drawProjects() {
   const ws = projects.filter(p => p.worker);
   if (ws.length) html += `<div class="group">Workers</div>${ws.map(workerRow).join('')}`;
   // Unpinned projects only live in All projects (no "Lately" list, not wanted).
-  // Once he has dragged the quick chats into an order, that order holds; new ones go on top.
-  const qo = S?.quickOrder || [], qi = p => qo.indexOf(p.path);
-  const recent = list => list.filter(p => !isPinned(p.path) && (p.path === current || p.lastAt))
-    .sort((a, b) => qo.length ? (qi(a) < 0 && qi(b) < 0 ? (b.lastAt || 0) - (a.lastAt || 0) : qi(a) - qi(b))
-      : (b.path === current) - (a.path === current) || (b.lastAt || 0) - (a.lastAt || 0));
+  // Quick chats are not listed in the sidebar (he asked); one link opens them all.
   const real = projects.filter(p => !p.quick && !p.worker), quick = projects.filter(p => p.quick && shown(p));
-  // Anything Claude is busy in (or waiting on you in) always stays in view.
-  const keep = (p, i) => i < 3 || !!liveOf(p.path);
-  // Quick chats fade out of the sidebar after 3 quiet days; they stay in All projects and search.
-  const rq = recent(quick).filter(p => p.path === current || liveOf(p.path) || Date.now() - (p.lastAt || 0) < 3 * 864e5).filter(keep);
-  if (rq.length) html += `<div class="group">Quick chats</div><div class="dlist" data-kind="quick">${rq.map(projRow).join('')}</div>`;
-  if (quick.length > rq.length) html += `<button class="qmore" data-act="allquick">${rq.length ? 'Older quick chats' : 'Quick chats'} (${quick.length - rq.length})</button>`;
+  if (quick.length) html += `<button class="qmore" data-act="allquick">Quick chats (${quick.length})</button>`;
   html += `<button class="allbtn" data-act="all">${ic('grid', 'sm')}All projects<span>${real.length}</span></button>`;
   $('#plist').innerHTML = html;
 }
