@@ -514,7 +514,7 @@ svg.i.xs { width: 13px; height: 13px; }
 .steps { margin: 6px 0; padding-left: 1.3em; color: var(--ink2); } .steps li { margin: 6px 0; }
 #viewer { position: fixed; inset: 0; z-index: 80; background: rgba(0,0,0,.85); display: none; place-items: center; cursor: zoom-out; padding: 20px; }
 #viewer.show { display: grid; }
-#viewer img { max-width: 100%; max-height: 100%; border-radius: 10px; }
+#viewer img { max-width: calc(100vw - 40px); max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px); object-fit: contain; border-radius: 10px; }
 
 /* ---------- drop + toasts */
 #drop { position: fixed; inset: 0; z-index: 90; display: none; place-items: center; background: color-mix(in srgb, var(--bg) 70%, transparent); backdrop-filter: blur(4px); pointer-events: none; }
