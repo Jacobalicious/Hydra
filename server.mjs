@@ -465,10 +465,19 @@ function deriveOut(a) {
 // The server said no. A weekly "no" while the week's numbers are not full is
 // that model's own weekly limit (Opus, Sonnet...): the account stays open for
 // the other models. Returns the reason, for the log and the chat.
+// Models that are paid from extra-usage credit (Fable 5.2) say "overage" when the
+// credit or monthly cap runs out: that blocks only that model, not the account.
+const modelKey = model => { const v = model || 'default'; return state.models.find(m => m.value === v)?.resolved?.replace(/\[.*\]$/, '') || v; };
 function markOut(a, hit, model) {
   const { kind, until, type } = hit;
-  const key = model || 'default';
-  if (kind === 'weekly' && (type === 'seven_day_opus' || type === 'seven_day_sonnet' || (a.week?.util ?? 0) < 100)) {
+  const key = modelKey(model);
+  const overage = type === 'overage' || type === 'seven_day_overage_included';
+  if (overage || (kind === 'weekly' && (type === 'seven_day_opus' || type === 'seven_day_sonnet' || (a.week?.util ?? 0) < 100))) {
+    if (overage) {
+      a.modelOut = { ...a.modelOut, [key]: { until: until || Date.now() + 5 * 3600 * 1000, type } };
+      persist(); pushState();
+      return `${a.id} is out of extra-usage credit for ${key} (resets ${fmtWhen(a.modelOut[key].until)}); it is still open for other models`;
+    }
     a.modelOut = { ...a.modelOut, [key]: { until: until || Date.now() + 7 * 24 * 3600 * 1000, type: type || null } };
     persist(); pushState();
     return `${a.id} hit its weekly limit for ${key} (resets ${fmtWhen(a.modelOut[key].until)}); it is still open for other models`;
@@ -482,7 +491,7 @@ function markOut(a, hit, model) {
   return describeOut(a);
 }
 const isOut = a => !!(a.outUntil && a.outUntil > Date.now());
-const modelBlocked = (a, model) => (a.modelOut?.[model || 'default']?.until || 0) > Date.now();
+const modelBlocked = (a, model) => (a.modelOut?.[modelKey(model)]?.until || a.modelOut?.[model || 'default']?.until || 0) > Date.now();
 const isNear = a => (a.five?.util ?? 0) >= NEAR_FIVE || (a.week?.util ?? 0) >= NEAR_WEEK;
 const usable = (a, model) => a.signedIn && !a.loginDead && !isOut(a) && !modelBlocked(a, model);
 // A message failed with "not logged in / OAuth expired". The usage check keeps
