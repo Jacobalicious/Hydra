@@ -1,22 +1,27 @@
 ## Done
-- Renamed to Hydra; public at github.com/Jacobalicious/Hydra (one squashed commit, no personal info). Name + projects folder come from config.json in the data folder (me.mjs); setup.ps1 + README set up a new PC. token-diet is built in (plugins/token-diet). Data folder ~/.hydra, falling back to an existing ~/.multiclaude.
-- Workers: a project chat can start up to 3 parallel workers (own git worktree + branch each, same account). Reports flow back to the lead, which merges and closes them. Sidebar has a "Workers" group; a worker's chat has a "Close worker" button. Tested end to end on a spare port (2 workers, both merged, both closed).
-- Parked work resumes as soon as any one account is usable again (tick() in server.mjs).
-- Terminal button on shell code blocks opens a real PowerShell window in the project folder.
-
-- Every chat (project, quick, worker) now gets REPLY_STYLE (short, bullets) at the top of its rules; project chats are told to start workers on their own when a job splits into separate parts (prompts.mjs).
+- Renamed to Hydra (page, app name, shortcuts, setup, env vars HYDRA_*). Public at github.com/the owneralicious/Hydra (one squashed commit, no personal info).
+- Shareable: name + projects folder come from config.json in the data folder (me.mjs, never hardcode a name); setup.ps1 + README set up a new PC.
+- token-diet is built in (plugins/token-diet), loaded in every chat.
+- Data folder is ~/.hydra, falling back to an existing ~/.multiclaude (where the owner's logins and chats live).
+- Workers: a project chat can start up to 3 parallel workers (own git worktree + branch). Reports go back to the lead, which merges and closes them.
+- Every chat gets REPLY_STYLE (short, bullets); project chats start workers on their own when a job splits.
 
 ## In progress
-- Nothing. Needs a server restart (stop.ps1 -Force, then start.ps1); not done from inside a chat because that kills the chat.
+- Nothing half-done. the owner still has to switch over: run launcher/install-shortcuts.ps1 (swaps MultiClaude shortcuts for Hydra ones, keeps start-at-sign-in), stop the old server once, then open Hydra. Don't restart from inside a chat; it kills the chat.
 
 ## Next
+- Confirm with the owner that Hydra opens with all projects/accounts after the switch.
+- setup.ps1 has never run on a fresh PC: a friend is the first real test; fix whatever they hit.
+- No real chat has run with the built-in token-diet yet: check its status line shows in a chat.
 - Look at the Workers sidebar group in the real page (not checked visually yet).
 - Optional: parked messages (`waits`) live only in memory; persist them if a restart dropping them bites.
 
 ## Must know
-- Full old history is local only, on branch private-history (mentions Jacob): never push it.
-- Outside auto mode, commands like the lead's git merge still ask the user first; workers copy the lead's mode (plan becomes acceptEdits).
+- Full old history is local only, on branch private-history (has personal info): never push it.
+- The repo is public: no personal names, paths, emails or keys in tracked files. Prompts use NAME from me.mjs.
+- token-diet in plugins/ is a copy; changes in the separate token-diet project don't flow in unless copied.
+- The status-dot files in ~/.claude/status-dot keep the "multiclaude-" prefix on purpose (an outside tray tool reads them).
+- The local folder is still named MultiClaude; only the app and repo were renamed.
+- Outside auto mode, the lead's git merge still asks the user first; workers copy the lead's mode (plan becomes acceptEdits).
 - Worker folders: Windows keeps them busy briefly after close, so removal retries after 5 s and leftovers are swept at startup.
 - earliestReset() only counts accounts that are still out, so never use "has it passed" as a gate.
-- The status-dot files in ~/.claude/status-dot keep the "multiclaude-" prefix on purpose (an outside tray tool reads them).
-- The local folder is still C:\Projects\Side Quest\MultiClaude; only the app and repo were renamed.
