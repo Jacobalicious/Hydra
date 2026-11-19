@@ -107,52 +107,14 @@ function persist() {
 // ---------------------------------------------------------------- events to the page
 const clients = new Set();
 function send(ev) { const s = `data: ${JSON.stringify(ev)}\n\n`; for (const c of clients) c.write(s); }
-function pushState() { send({ type: 'state', state: publicState() }); syncDot(); }
+function pushState() { send({ type: 'state', state: publicState() }); }
 
 // ---------------------------------------------------------------- taskbar status dot
-// The "claude check" tray dot reads one file per chat from ~/.claude/status-dot.
-// Its hooks live in ~/.claude/settings.json, which these chats never load (each
-// account has its own config folder), so report each chat's state here instead.
-// One file per project, so a handoff to another account reuses it. Files are
-// only written when a state changes, so a chat dismissed from the dot stays
-// dismissed until it does something new. A finished chat that gets closed for
-// being idle stays green; one that stops mid-work is removed.
-const DOT_DIR = path.join(HOME, '.claude', 'status-dot');
-const dotSeen = new Map();   // project -> last state written
-const dotFile = project => path.join(DOT_DIR, `multiclaude-${crypto.createHash('sha1').update(project.toLowerCase()).digest('hex').slice(0, 12)}.json`);
-function syncDot() {
-  try {
-    const live = new Set();
-    for (const r of runs.values()) {
-      live.add(r.project);
-      const s = r.perms.size ? 'waiting' : r.busy ? 'working' : 'done';
-      if (dotSeen.get(r.project) === s) continue;
-      dotSeen.set(r.project, s);
-      fs.mkdirSync(DOT_DIR, { recursive: true });
-      fs.writeFileSync(dotFile(r.project), JSON.stringify({ state: s, project: projectName(r.project), updated: Date.now(), by: 'multiclaude' }));
-    }
-    for (const [project, s] of dotSeen) {
-      if (live.has(project)) continue;
-      dotSeen.delete(project);
-      if (s !== 'done') fs.rmSync(dotFile(project), { force: true });
-    }
-  } catch {}
-}
-// He wrote back, or took the project off his main list: clear its dot now.
-// dotSeen keeps its value, so a live chat is not rewritten until its state changes.
-function dotDismiss(project) { try { fs.rmSync(dotFile(project), { force: true }); } catch {} }
-// Anything still "working" or "needs you" from before Hydra last closed is not running any more.
+// MultiClaude chats no longer show on the "claude check" tray dot. Clear any files left from when they did.
 try {
-  for (const f of fs.readdirSync(DOT_DIR)) {
-    if (!f.startsWith('hydra-')) continue;
-    try { if (JSON.parse(fs.readFileSync(path.join(DOT_DIR, f), 'utf8')).state !== 'done') fs.rmSync(path.join(DOT_DIR, f), { force: true }); } catch {}
-  }
+  const dir = path.join(HOME, ".claude", "status-dot");
+  for (const f of fs.readdirSync(dir)) if (/^(multiclaude|hydra)-/.test(f)) fs.rmSync(path.join(dir, f), { force: true });
 } catch {}
-// Long turns: refresh "working" so the dot doesn't take them for crashed after 2h.
-setInterval(() => {
-  for (const [project, s] of dotSeen) if (s === 'working') dotSeen.delete(project);
-  syncDot();
-}, 30 * 60 * 1000);
 setInterval(() => { for (const c of clients) c.write(': ping\n\n'); }, 25000);   // keeps phone connections open
 
 // ---------------------------------------------------------------- windows notifications
@@ -424,7 +386,7 @@ function setPinned(p, on) {
   p = checkProject(p);
   state.pinned = state.pinned.filter(x => !sameDir(x, p));
   state.unstarred = state.unstarred.filter(x => !sameDir(x, p));
-  if (on) state.pinned.push(p); else { state.unstarred.push(p); dotDismiss(p); }
+  if (on) state.pinned.push(p); else state.unstarred.push(p);
   persist(); pushState();
 }
 // He dragged the sidebar into a new order. kind 'pinned' reorders main projects; 'quick' the quick chats.
@@ -1290,7 +1252,7 @@ async function sendMessage(project, text, fileIds = [], promptOverride = null, {
     const { brandNew, ...rest } = state.projects[project]; state.projects[project] = rest; persist();
   }
   const { content, plain } = buildContent(promptOverride || text, files);
-  if (!byClaude) { addChat(project, { kind: 'user', text, files }); if (!['working', 'waiting'].includes(dotSeen.get(project))) dotDismiss(project); }
+  if (!byClaude) { addChat(project, { kind: 'user', text, files }); }
   unseen.delete(project);
   // Working on a project stars it (unless he unstarred it by hand before).
   if (!byClaude && !isQuick(project) && !workerOf(project) && !state.pinned.some(x => sameDir(x, project)) && !state.unstarred.some(x => sameDir(x, project))) { pinIt(project); pushState(); }
