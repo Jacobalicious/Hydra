@@ -8,12 +8,13 @@ self.addEventListener('push', e => {
   try { d = e.data ? e.data.json() : {}; } catch { d = { body: e.data && e.data.text() }; }
   e.waitUntil((async () => {
     const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    const looking = wins.some(w => w.visibilityState === 'visible');
+    const looking = wins.some(w => w.visibilityState === 'visible' && w.focused);
     await self.registration.showNotification(d.title || 'Hydra', {
       body: d.body || '',
       icon: '/icon-192.png',
       tag: d.project || d.title || 'hydra',   // a newer alert for the same project replaces the old one
       renotify: true,
+      vibrate: looking ? [] : [200, 100, 200],
       silent: looking,                              // he is already looking at the page: no buzz
       data: { project: d.project || null },
     });
