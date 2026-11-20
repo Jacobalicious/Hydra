@@ -1263,8 +1263,11 @@ async function sendMessage(project, text, fileIds = [], promptOverride = null, {
   const { content, plain } = buildContent(promptOverride || text, files);
   if (!byClaude) { addChat(project, { kind: 'user', text, files }); }
   unseen.delete(project);
-  // Working on a project stars it (unless he unstarred it by hand before).
-  if (!byClaude && !isQuick(project) && !workerOf(project) && !state.pinned.some(x => sameDir(x, project)) && !state.unstarred.some(x => sameDir(x, project))) { pinIt(project); pushState(); }
+  // Working on a project stars it and moves it to the top of main projects, where it stays after
+  // Claude is done (unless he unstarred it by hand; opening it from Find a project clears that).
+  if (!byClaude && !isQuick(project) && !workerOf(project) && !state.unstarred.some(x => sameDir(x, project)) && !sameDir(state.pinned[0] || '', project)) {
+    state.pinned = [project, ...state.pinned.filter(x => !sameDir(x, project))]; persist(); pushState();
+  }
 
   const model = settingsFor(project).model;
   const cur = runs.get(project);
@@ -1596,6 +1599,7 @@ const server = http.createServer(async (req, res) => {
         case '/api/effort': await setEffort(b.project, b.effort); break;
         case '/api/refresh': refreshAll(); checkTailscale(); break;
         case '/api/pin': setPinned(b.project, !!b.on); break;
+        case '/api/found': { const p = checkProject(b.project); state.unstarred = state.unstarred.filter(x => !sameDir(x, p)); persist(); break; }
         case '/api/order': setOrder(b.kind, b.list); break;
         case '/api/folder/add': out = { path: addFolder(b.path) }; break;
         case '/api/folder/remove': removeFolder(b.path); break;

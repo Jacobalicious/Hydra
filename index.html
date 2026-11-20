@@ -1014,7 +1014,7 @@ $('#palq').onkeydown = e => {
   const rows = [...$('#pall').querySelectorAll('.prow[data-p]')];
   if (e.key === 'ArrowDown') { e.preventDefault(); finder.hl = Math.min(rows.length - 1, finder.hl + 1); markHl(); }
   if (e.key === 'ArrowUp') { e.preventDefault(); finder.hl = Math.max(0, finder.hl - 1); markHl(); }
-  if (e.key === 'Enter' && rows[finder.hl] && $('#palq').value.trim()) { closeFinder(); openProject(rows[finder.hl].dataset.p); }
+  if (e.key === 'Enter' && rows[finder.hl] && $('#palq').value.trim()) { closeFinder(); foundProject(rows[finder.hl].dataset.p); }
 };
 $('#pal').onclick = e => {
   if (e.target.id === 'pal') return closeFinder();
@@ -1023,8 +1023,10 @@ $('#pal').onclick = e => {
   const shelf = e.target.closest('[data-shelf]');
   if (shelf) { const s = shelf.dataset.shelf; finder.open.has(s) ? finder.open.delete(s) : finder.open.add(s); drawFinder(); return; }
   const row = e.target.closest('.prow[data-p]');
-  if (row) { closeFinder(); openProject(row.dataset.p); }
+  if (row) { closeFinder(); foundProject(row.dataset.p); }
 };
+// Picked from Find a project: it may have been unstarred long ago; working on it now stars it again.
+function foundProject(p) { post('/api/found', { project: p }).catch(() => {}); openProject(p); }
 $('#palOpen').onclick = () => { closeFinder(); folderPicker(''); };
 $('#findBtn').onclick = openFinder;
 document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); $('#pal').classList.contains('show') ? closeFinder() : openFinder(); } });
