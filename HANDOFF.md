@@ -1,4 +1,5 @@
 ## Done
+- Sidebar: workers have an X (close) and a blue dot once reported; reported workers whose branch is merged close themselves after the lead's turn. Last 3 quick chats show with an X (hides + stops; state.quickHidden; a new message unhides).
 - Renamed to Hydra (page, app name, shortcuts, setup, env vars HYDRA_*). Public at github.com/Jacobalicious/Hydra (one squashed commit, no personal info).
 - Shareable: name + projects folder come from config.json in the data folder (me.mjs, never hardcode a name); setup.ps1 + README set up a new PC.
 - token-diet is built in (plugins/token-diet), loaded in every chat.
@@ -13,7 +14,6 @@
 - Confirm with the owner that Hydra opens with all projects/accounts after the switch.
 - setup.ps1 has never run on a fresh PC: a friend is the first real test; fix whatever they hit.
 - No real chat has run with the built-in token-diet yet: check its status line shows in a chat.
-- Look at the Workers sidebar group in the real page (not checked visually yet).
 - Optional: parked messages (`waits`) live only in memory; persist them if a restart dropping them bites.
 
 ## Must know

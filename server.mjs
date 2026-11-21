@@ -74,6 +74,7 @@ const state = {
   pinned: saved.pinned || [],                 // his main projects, shown at the top of the sidebar
   unstarred: saved.unstarred || [],           // projects he unstarred by hand: never auto-starred again
   quickOrder: saved.quickOrder || [],         // quick chats in the order he dragged them to (others go on top, newest first)
+  quickHidden: saved.quickHidden || [],       // quick chats he X'd out of the sidebar's recent list (still in the Quick chats list)
   models: saved.models || [],                 // what the accounts offer (from supportedModels)
   commands: saved.commands || [],             // slash commands (from supportedCommands)
   projects: saved.projects || {},             // projectPath -> { accountId, sessionId }
@@ -100,21 +101,59 @@ for (const a of state.accounts) fs.mkdirSync(a.configDir, { recursive: true });
 function persist() {
   const usage = {};
   for (const a of state.accounts) usage[a.id] = { email: a.email, signedIn: a.signedIn, loginDead: a.loginDead || null, five: a.five, week: a.week, outUntil: a.outUntil, outKind: a.outKind, outSource: a.outSource, modelOut: a.modelOut, checkedAt: a.checkedAt };
-  const { mode, model, effort, folders, pinned, unstarred, quickOrder, models, commands, projects, workers } = state;
-  writeJson(STATE_FILE, { mode, model, effort, folders, pinned, unstarred, quickOrder, models, commands, projects, workers, usage });
+  const { mode, model, effort, folders, pinned, unstarred, quickOrder, quickHidden, models, commands, projects, workers } = state;
+  writeJson(STATE_FILE, { mode, model, effort, folders, pinned, unstarred, quickOrder, quickHidden, models, commands, projects, workers, usage });
 }
 
 // ---------------------------------------------------------------- events to the page
 const clients = new Set();
 function send(ev) { const s = `data: ${JSON.stringify(ev)}\n\n`; for (const c of clients) c.write(s); }
-function pushState() { send({ type: 'state', state: publicState() }); }
+function pushState() { send({ type: 'state', state: publicState() }); syncDot(); }
 
 // ---------------------------------------------------------------- taskbar status dot
-// MultiClaude chats no longer show on the "claude check" tray dot. Clear any files left from when they did.
+// The "claude check" tray dot reads one file per chat from ~/.claude/status-dot.
+// Its hooks live in ~/.claude/settings.json, which these chats never load (each
+// account has its own config folder), so report each chat's state here instead.
+// One file per project, so a handoff to another account reuses it. Files are
+// only written when a state changes, so a chat dismissed from the dot stays
+// dismissed until it does something new. A finished chat that gets closed for
+// being idle stays green; one that stops mid-work is removed.
+const DOT_DIR = path.join(HOME, '.claude', 'status-dot');
+const dotSeen = new Map();   // project -> last state written
+const dotFile = project => path.join(DOT_DIR, `multiclaude-${crypto.createHash('sha1').update(project.toLowerCase()).digest('hex').slice(0, 12)}.json`);
+function syncDot() {
+  try {
+    const live = new Set();
+    for (const r of runs.values()) {
+      live.add(r.project);
+      const s = r.perms.size ? 'waiting' : r.busy ? 'working' : 'done';
+      if (dotSeen.get(r.project) === s) continue;
+      dotSeen.set(r.project, s);
+      fs.mkdirSync(DOT_DIR, { recursive: true });
+      fs.writeFileSync(dotFile(r.project), JSON.stringify({ state: s, project: projectName(r.project), updated: Date.now(), by: 'multiclaude' }));
+    }
+    for (const [project, s] of dotSeen) {
+      if (live.has(project)) continue;
+      dotSeen.delete(project);
+      if (s !== 'done') fs.rmSync(dotFile(project), { force: true });
+    }
+  } catch {}
+}
+// He wrote back, or took the project off his main list: clear its dot now.
+// dotSeen keeps its value, so a live chat is not rewritten until its state changes.
+function dotDismiss(project) { try { fs.rmSync(dotFile(project), { force: true }); } catch {} }
+// Anything still "working" or "needs you" from before Hydra last closed is not running any more.
 try {
-  const dir = path.join(HOME, ".claude", "status-dot");
-  for (const f of fs.readdirSync(dir)) if (/^(multiclaude|hydra)-/.test(f)) fs.rmSync(path.join(dir, f), { force: true });
+  for (const f of fs.readdirSync(DOT_DIR)) {
+    if (!/^(multiclaude|hydra)-/.test(f)) continue;
+    try { if (JSON.parse(fs.readFileSync(path.join(DOT_DIR, f), 'utf8')).state !== 'done') fs.rmSync(path.join(DOT_DIR, f), { force: true }); } catch {}
+  }
 } catch {}
+// Long turns: refresh "working" so the dot doesn't take them for crashed after 2h.
+setInterval(() => {
+  for (const [project, s] of dotSeen) if (s === 'working') dotSeen.delete(project);
+  syncDot();
+}, 30 * 60 * 1000);
 setInterval(() => { for (const c of clients) c.write(': ping\n\n'); }, 25000);   // keeps phone connections open
 
 // ---------------------------------------------------------------- windows notifications
@@ -356,6 +395,8 @@ function addChat(p, item) {
   const list = chat(p);
   item.t = Date.now();
   list.push(item);
+  // Talking in a quick chat he hid brings it back to the sidebar.
+  if (item.kind === 'user' && state.quickHidden.some(x => sameDir(x, p))) { state.quickHidden = state.quickHidden.filter(x => !sameDir(x, p)); persist(); pushState(); }
   if (list.length > 1500) list.splice(0, list.length - 1500);
   writeJson(chatFile(p), list);
   send({ type: 'chat', project: p, item });
@@ -386,7 +427,7 @@ function setPinned(p, on) {
   p = checkProject(p);
   state.pinned = state.pinned.filter(x => !sameDir(x, p));
   state.unstarred = state.unstarred.filter(x => !sameDir(x, p));
-  if (on) state.pinned.push(p); else state.unstarred.push(p);
+  if (on) state.pinned.push(p); else { state.unstarred.push(p); dotDismiss(p); }
   persist(); pushState();
 }
 // He dragged the sidebar into a new order. kind 'pinned' reorders main projects; 'quick' the quick chats.
@@ -881,6 +922,13 @@ async function messageWorker(r, name, message) {
   return `Sent to "${w.name}". Its answer will arrive here as a message.`;
 }
 
+// After a lead's turn: a worker that reported and whose branch is already merged into the lead is finished; close it.
+async function closeMergedWorkers(lead) {
+  for (const [folder, w] of leadWorkers(lead)) {
+    if (!w.reported || runs.get(folder)?.busy) continue;
+    if ((await gitOk(lead, 'merge-base', '--is-ancestor', w.branch, 'HEAD')).ok) await removeWorker(folder);
+  }
+}
 async function closeWorker(r, name, discard) {
   const hit = findWorker(r.project, name);
   if (!hit) return `No worker called "${name}".`;
@@ -1104,6 +1152,7 @@ async function consume(r) {
         if (!quiet && !r.stopping && !stoppedByUser && !r.freshing && !r.newChat) unseen.add(r.project);
         if (!quiet && !r.stopping && !stoppedByUser && !r.freshing && !r.newChat) notify('Claude is done', `${projectName(r.project)} is waiting for your next message.`, r.project);
         afterTurn(r);
+        if (!asWorker) closeMergedWorkers(r.project).catch(e => console.error('close merged', e));
       }
     }
   } catch (e) {
@@ -1261,7 +1310,7 @@ async function sendMessage(project, text, fileIds = [], promptOverride = null, {
     const { brandNew, ...rest } = state.projects[project]; state.projects[project] = rest; persist();
   }
   const { content, plain } = buildContent(promptOverride || text, files);
-  if (!byClaude) { addChat(project, { kind: 'user', text, files }); }
+  if (!byClaude) { addChat(project, { kind: 'user', text, files }); if (!['working', 'waiting'].includes(dotSeen.get(project))) dotDismiss(project); }
   unseen.delete(project);
   // Working on a project stars it and moves it to the top of main projects, where it stays after
   // Claude is done (unless he unstarred it by hand; opening it from Find a project clears that).
@@ -1443,6 +1492,7 @@ function publicState() {
     efforts: m?.efforts?.length ? m.efforts : EFFORTS,
     pinned: state.pinned.filter(known),
     quickOrder: state.quickOrder,
+    quickHidden: state.quickHidden.filter(isQuick),
     accounts: state.accounts.map(a => ({
       id: a.id, label: a.label, email: a.email, signedIn: a.signedIn && !a.loginDead, loginDead: !!a.loginDead, configDir: a.configDir,
       five: a.five, week: a.week, out: isOut(a), outKind: isOut(a) ? a.outKind : null, outUntil: isOut(a) ? a.outUntil : null,
@@ -1610,6 +1660,13 @@ const server = http.createServer(async (req, res) => {
         case '/api/worker/close': { const p = checkProject(b.project); if (!workerOf(p)) throw new Error('That is not a worker.'); out = { text: await removeWorker(p) }; break; }
         case '/api/seen': unseen.delete(checkProject(b.project)); pushState(); break;
         case '/api/quick/new': out = { path: newQuick() }; break;
+        case '/api/quick/hide': {
+          const p = checkProject(b.project); if (!isQuick(p)) throw new Error('That is not a quick chat.');
+          const run = runs.get(p); if (run) await endRun(run);
+          waits.delete(p); unseen.delete(p);
+          state.quickHidden = [...state.quickHidden.filter(x => isQuick(x) && !sameDir(x, p)), p].slice(-500);
+          persist(); pushState(); break;
+        }
         case '/api/project/new': out = await newProject(b); break;
         case '/api/run': out = await runCommand(b.project, b.cmd); break;
         case '/api/run-window': runInWindow(b.project, b.cmd); break;

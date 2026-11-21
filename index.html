@@ -122,6 +122,7 @@ svg.i.xs { width: 13px; height: 13px; }
 .proj .pinb { width: 24px; height: 24px; margin: -4px -4px -4px 0; border-radius: 7px; display: none; place-items: center; color: var(--faint); flex: none; }
 .proj .pinb:hover { background: var(--panel3); color: var(--ink); }
 .proj:hover .pinb { display: inline-grid; }
+@media (pointer: coarse) { .proj .pinb.xb { display: inline-grid; } }
 .proj:hover .tag, .proj:hover .ago { display: none; }
 .proj.main { padding: 8px 10px; gap: 11px; }
 .proj.main .tile { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; flex: none; font: 600 14px var(--sans); color: #fff; background: var(--tile, var(--panel3)); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
@@ -821,10 +822,18 @@ function mainRow(p) {
 // A lead chat's workers: one row each, under the main projects, while they are open.
 function workerRow(p) {
   const w = S?.workers?.find(x => x.path === p.path), lead = projects.find(x => x.path === p.lead);
-  const live = liveOf(p.path) || (w?.reported ? { dot: 'rest', text: 'Reported to the lead' } : null);
+  const live = liveOf(p.path) || (w?.reported ? { dot: 'done', text: 'Finished, reported to the lead' } : null);
   return `<div class="proj wk${current === p.path ? ' sel' : ''}" data-p="${esc(p.path)}" title="${esc((p.task || '').slice(0, 300))}">
     <span class="ic">${ic('bot', 'sm')}</span><span class="nm">${esc(p.wname)}<span class="tag"> · ${esc(lead ? leafOf(lead) : '')}</span></span>
-    ${dotHtml(live)}</div>`;
+    ${dotHtml(live)}
+    <button class="pinb xb" data-closew="${esc(p.path)}" title="Close this worker (its branch is kept if it isn't merged)">${ic('x', 'xs')}</button></div>`;
+}
+// The last few quick chats, each with an X to hide it (and stop it if it's running).
+function quickRow(p) {
+  return `<div class="proj${current === p.path ? ' sel' : ''}" data-p="${esc(p.path)}" title="${esc(p.name)}">
+    <span class="ic">${ic('chat', 'sm')}</span><span class="nm">${esc(leafOf(p))}</span>
+    ${dotHtml(liveOf(p.path))}
+    <button class="pinb xb" data-hideq="${esc(p.path)}" title="Hide from here (stops it if it's working)">${ic('x', 'xs')}</button></div>`;
 }
 // Keep the page's list in step with the server's open workers (they come and go mid-chat).
 function syncWorkers() {
@@ -849,7 +858,9 @@ function drawProjects() {
   // Unpinned projects only live in All projects (no "Lately" list, not wanted).
   // Quick chats are not listed in the sidebar (he asked); one link opens them all.
   const real = projects.filter(p => !p.quick && !p.worker), quick = projects.filter(p => p.quick && shown(p));
-  if (quick.length) html += `<button class="qmore" data-act="allquick">Quick chats (${quick.length})</button>`;
+  const hid = S?.quickHidden || [], recent = quick.filter(p => !hid.includes(p.path)).sort((a, b) => (b.lastAt || 0) - (a.lastAt || 0)).slice(0, 3);
+  if (recent.length) html += `<div class="group">Quick chats</div>${recent.map(quickRow).join('')}`;
+  if (quick.length) html += `<button class="qmore" data-act="allquick">All quick chats (${quick.length})</button>`;
   html += `<button class="allbtn" data-act="all">${ic('grid', 'sm')}All projects<span>${real.length}</span></button>`;
   $('#plist').innerHTML = html;
 }
@@ -862,6 +873,9 @@ $('#plist').onclick = e => {
   const pin = e.target.closest('[data-pin]'), unpin = e.target.closest('[data-unpin]');
   if (pin) { e.stopPropagation(); setPin(pin.dataset.pin, true); toast(leafOf(projects.find(p => p.path === pin.dataset.pin)) + ' is now a main project'); return; }
   if (unpin) { e.stopPropagation(); setPin(unpin.dataset.unpin, false); return; }
+  const cw = e.target.closest('[data-closew]'), hq = e.target.closest('[data-hideq]');
+  if (cw) { e.stopPropagation(); if (!confirm('Close this worker? It stops and its copy is deleted. Its branch is kept if it is not merged yet.')) return; const lead = projects.find(p => p.path === cw.dataset.closew)?.lead; post('/api/worker/close', { project: cw.dataset.closew }).then(() => { if (current === cw.dataset.closew && lead) openProject(lead); }); return; }
+  if (hq) { e.stopPropagation(); if (S) { S.quickHidden = [...(S.quickHidden || []), hq.dataset.hideq]; drawProjects(); } post('/api/quick/hide', { project: hq.dataset.hideq }); return; }
   if (e.target.closest('[data-act="all"]')) { openFinder(); return; }
   if (e.target.closest('[data-act="allquick"]')) { openFinder('Quick chats'); return; }
   const el = e.target.closest('.proj'); if (el) { openProject(el.dataset.p); closeSide(); }
