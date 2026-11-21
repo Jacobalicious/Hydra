@@ -976,7 +976,9 @@ function openFinder(shelf) {
   $('#palq').value = ''; finder.hl = 0;
   if (typeof shelf === 'string') finder.open.add(shelf);
   else if (current && curProject()) finder.open.add(shelfOf(curProject()));
-  $('#pal').classList.add('show'); drawFinder(); loadProjects(true).then(() => { if ($('#pal').classList.contains('show')) drawFinder(); }).catch(() => {});
+  // Redraw after the rescan only if the list really changed: a redraw between press and release eats the click.
+  const before = JSON.stringify(projects);
+  $('#pal').classList.add('show'); drawFinder(); loadProjects(true).then(() => { if ($('#pal').classList.contains('show') && JSON.stringify(projects) !== before) drawFinder(); }).catch(() => {});
   setTimeout(() => $('#palq').focus(), 30);
 }
 function closeFinder() { $('#pal').classList.remove('show'); }
@@ -1030,14 +1032,19 @@ $('#palq').onkeydown = e => {
   if (e.key === 'ArrowUp') { e.preventDefault(); finder.hl = Math.max(0, finder.hl - 1); markHl(); }
   if (e.key === 'Enter' && rows[finder.hl] && $('#palq').value.trim()) { closeFinder(); foundProject(rows[finder.hl].dataset.p); }
 };
+// The row pressed, kept in case the list was redrawn before the button came back up (the click then lands elsewhere).
+let palDown = null;
+$('#pal').addEventListener('pointerdown', e => { palDown = e.target.closest('.prow[data-p]')?.dataset.p || null; });
 $('#pal').onclick = e => {
+  const downOn = palDown; palDown = null;
   if (e.target.id === 'pal') return closeFinder();
   const star = e.target.closest('[data-star]');
   if (star) { const on = !star.classList.contains('on'); setPin(star.dataset.star, on).then(drawFinder); star.classList.toggle('on', on); return; }
   const shelf = e.target.closest('[data-shelf]');
   if (shelf) { const s = shelf.dataset.shelf; finder.open.has(s) ? finder.open.delete(s) : finder.open.add(s); drawFinder(); return; }
   const row = e.target.closest('.prow[data-p]');
-  if (row) { closeFinder(); foundProject(row.dataset.p); }
+  const p = row ? row.dataset.p : !e.target.closest('.prow, .pg, button, input') && downOn;
+  if (p) { closeFinder(); foundProject(p); }
 };
 // Picked from Find a project: it may have been unstarred long ago; working on it now stars it again.
 function foundProject(p) { post('/api/found', { project: p }).catch(() => {}); openProject(p); }
