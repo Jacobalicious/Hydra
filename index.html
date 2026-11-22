@@ -554,6 +554,25 @@ svg.i.xs { width: 13px; height: 13px; }
   .hero { margin-top: 7vh; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+/* cute "fetching your chat" critter while a project loads */
+.loadpet { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; min-height:50vh; color:var(--muted); font-size:14px; animation: lpIn .25s ease; }
+.loadpet .pet { position:relative; width:64px; height:54px; animation: lpHop .9s cubic-bezier(.3,.7,.4,1) infinite; }
+.loadpet .body { position:absolute; inset:0; border-radius:50% 50% 44% 44%; background:linear-gradient(180deg,var(--accent),var(--accent2)); box-shadow:0 6px 16px rgba(201,100,59,.3); }
+.loadpet .ear { position:absolute; top:-7px; width:16px; height:18px; background:var(--accent); border-radius:50% 50% 0 0; }
+.loadpet .ear.l { left:8px; transform:rotate(-18deg); } .loadpet .ear.r { right:8px; transform:rotate(18deg); }
+.loadpet .eye { position:absolute; top:20px; width:7px; height:9px; background:#2b1a12; border-radius:50%; animation: lpBlink 3s infinite; }
+.loadpet .eye.l { left:19px; } .loadpet .eye.r { right:19px; }
+.loadpet .cheek { position:absolute; top:31px; width:9px; height:5px; background:rgba(255,170,190,.8); border-radius:50%; }
+.loadpet .cheek.l { left:11px; } .loadpet .cheek.r { right:11px; }
+.loadpet .mouth { position:absolute; top:31px; left:50%; width:8px; height:4px; margin-left:-4px; border-bottom:2px solid #2b1a12; border-radius:0 0 50% 50%; }
+.loadpet .shadow { width:46px; height:7px; border-radius:50%; background:rgba(0,0,0,.18); animation: lpShadow .9s cubic-bezier(.3,.7,.4,1) infinite; margin-top:-8px; }
+.loadpet .dots span { display:inline-block; animation: lpDot 1.2s infinite; } .loadpet .dots span:nth-child(2){animation-delay:.15s} .loadpet .dots span:nth-child(3){animation-delay:.3s}
+@keyframes lpHop { 0%,100% { transform:translateY(0) scale(1.08,.92); } 15% { transform:translateY(0) scale(.95,1.05); } 50% { transform:translateY(-22px) scale(1,1); } 85% { transform:translateY(0) scale(1.05,.95); } }
+@keyframes lpShadow { 0%,100% { transform:scale(1); opacity:.9; } 50% { transform:scale(.6); opacity:.4; } }
+@keyframes lpBlink { 0%,92%,100% { transform:scaleY(1); } 95% { transform:scaleY(.1); } }
+@keyframes lpDot { 0%,60%,100% { transform:translateY(0); opacity:.4; } 30% { transform:translateY(-4px); opacity:1; } }
+@keyframes lpIn { from { opacity:0; transform:translateY(6px); } }
+@media (prefers-reduced-motion: reduce) { .loadpet * { animation:none !important; } }
 </style>
 </head>
 <body>
@@ -1110,18 +1129,25 @@ $('#menuBtn').onclick = openSide; $('#sideClose').onclick = closeSide; $('#scrim
 
 // Only the most recent open wins: a slower, older load (startup, reconnect refresh, an
 // earlier tap) finishing late must not drag the page back to the project it was on.
+let loadingChat = false;
+const PET_LINES = ['Fetching your chat', 'Sniffing out the messages', 'Digging up the conversation', 'Hopping over there', 'Unpacking your stuff', 'Fluffing the pillows'];
+function petHtml() {
+  const line = PET_LINES[Math.floor(Math.random() * PET_LINES.length)];
+  return `<div class="loadpet"><div class="pet"><div class="ear l"></div><div class="ear r"></div><div class="body"></div><div class="eye l"></div><div class="eye r"></div><div class="cheek l"></div><div class="cheek r"></div><div class="mouth"></div></div><div class="shadow"></div><div>${line}<span class="dots"><span>.</span><span>.</span><span>.</span></span></div></div>`;
+}
 let openSeq = 0, wanted = null;   // wanted = the project last asked for (may still be loading)
 async function openProject(p) {
   const my = ++openSeq; wanted = p;
   if (p !== current) {   // switch right away; don't leave the old chat on screen while this one loads
-    current = p; past = null; items = [];
+    current = p; past = null; items = []; loadingChat = true;
     liveBuf.text = ''; liveBuf.think = ''; lastBusy = false;
     try { localStorage.setItem('mc.project', p); } catch {}
     drawProjects(); drawChat(); drawAll();
   }
   const r = await fetch('/api/chat?project=' + encodeURIComponent(p));
   if (my !== openSeq) return;
-  if (!r.ok) { toast('Could not open that folder', '', true); return; }
+  loadingChat = false;
+  if (!r.ok) { drawChat(); toast('Could not open that folder', '', true); return; }
   const j = await r.json();
   if (my !== openSeq) return;
   current = p; past = null;
@@ -1236,6 +1262,7 @@ function drawChat() {
   results = {};
   for (const it of items) if (it.kind === 'result') results[it.toolId] = it;
   const c = $('#chat');
+  if (loadingChat && !items.length) { c.innerHTML = petHtml(); return; }
   if (!items.filter(i => i.kind !== 'result').length) { c.innerHTML = heroHtml(); return; }
   let html = '', inTools = false;
   for (const it of items) {
