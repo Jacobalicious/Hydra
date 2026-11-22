@@ -19,6 +19,7 @@
 - Optional: parked messages (`waits`) live only in memory; persist them if a restart dropping them bites.
 
 ## Must know
+- Phone alerts (Android): they arrive via the Hydra home-screen app; its "General" alert setting must have "Pop on screen" on or they land silently. adb is at C:/Projects/phone/tools/platform-tools.
 - Full old history is local only, on branch private-history (has personal info): never push it.
 - The repo is public: no personal names, paths, emails or keys in tracked files. Prompts use NAME from me.mjs.
 - token-diet in plugins/ is a copy; changes in the separate token-diet project don't flow in unless copied.
