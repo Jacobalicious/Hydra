@@ -1113,6 +1113,12 @@ $('#menuBtn').onclick = openSide; $('#sideClose').onclick = closeSide; $('#scrim
 let openSeq = 0, wanted = null;   // wanted = the project last asked for (may still be loading)
 async function openProject(p) {
   const my = ++openSeq; wanted = p;
+  if (p !== current) {   // switch right away; don't leave the old chat on screen while this one loads
+    current = p; past = null; items = [];
+    liveBuf.text = ''; liveBuf.think = ''; lastBusy = false;
+    try { localStorage.setItem('mc.project', p); } catch {}
+    drawProjects(); drawChat(); drawAll();
+  }
   const r = await fetch('/api/chat?project=' + encodeURIComponent(p));
   if (my !== openSeq) return;
   if (!r.ok) { toast('Could not open that folder', '', true); return; }
