@@ -1,4 +1,5 @@
 ## Done
+- Keep going: project chats call mcp__hydra__keep_going when work isn't done and nothing needs the owner; Hydra sends "carry on" after the reply (also after the long-chat note, in the fresh chat, and across account switches). Cap HYDRA_KEEP_GOING_MAX (30) carry-ons per user message. Not yet tried in a real chat.
 - Sidebar: workers have an X (close) and a blue dot once reported; reported workers whose branch is merged close themselves after the lead's turn. Last 3 quick chats show with an X (hides + stops; state.quickHidden; a new message unhides).
 - Renamed to Hydra (page, app name, shortcuts, setup, env vars HYDRA_*). Public at github.com/Jacobalicious/Hydra (one squashed commit, no personal info).
 - Shareable: name + projects folder come from config.json in the data folder (me.mjs, never hardcode a name); setup.ps1 + README set up a new PC.
@@ -11,6 +12,7 @@
 - Nothing half-done. the owner still has to switch over: run launcher/install-shortcuts.ps1 (swaps MultiClaude shortcuts for Hydra ones, keeps start-at-sign-in), stop the old server once, then open Hydra. Don't restart from inside a chat; it kills the chat.
 
 ## Next
+- Restart Hydra (stop.ps1 -Force, start.ps1, from outside a chat) and watch a real chat use keep_going.
 - Confirm with the owner that Hydra opens with all projects/accounts after the switch.
 - setup.ps1 has never run on a fresh PC: a friend is the first real test; fix whatever they hit.
 - No real chat has run with the built-in token-diet yet: check its status line shows in a chat.

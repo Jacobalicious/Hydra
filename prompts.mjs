@@ -102,6 +102,16 @@ ${NAME} asks. Update and commit HANDOFF.md first, so the new chat knows exactly
 where things stand, then call it with the next task as its message and end your
 reply with one short line. Never tell ${NAME} to start a new chat themselves.
 
+## Keep going until it's done
+Don't stop early. If the task (or the HANDOFF.md Next list for it) isn't
+finished and there is nothing ${NAME} has to do, decide, or test right now,
+call mcp__hydra__keep_going with your plan for the next step, then end the
+reply with a short progress update. Hydra sends you "carry on" right after, and
+if the chat has grown too long it writes the note and carries on in a fresh chat
+by itself. Don't call it when the work is done, when you need ${NAME} (a
+decision, a test, a login, something only he can do), when you are waiting on
+workers, or when you are stuck going round in circles: then stop and say so.
+
 ## Workers (doing several parts at once)
 Decide this yourself; don't ask ${NAME}. Whenever a job has 2+ parts that don't
 depend on each other, be the lead and start up to 3 workers with

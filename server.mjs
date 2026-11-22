@@ -825,6 +825,13 @@ function makeChatServer(r, quick) {
           r.newChat = a.message.trim();
           return { content: [{ type: 'text', text: 'OK. The new chat starts as soon as this reply ends. Finish now with one short line to ' + NAME + '.' }] };
         }),
+      tool('keep_going', "The work isn't finished and nothing needs " + NAME + " right now: once this reply ends, Hydra tells you to carry on (in a fresh chat from HANDOFF.md if this one is long). Give the plan for the next step.",
+        { plan: z.string().min(1).describe('What you will do next, in a sentence or two') },
+        async a => {
+          if (workerOf(r.project)) return text('Workers just keep working in this reply; your report goes to the lead when you finish.');
+          r.keepGoing = a.plan.trim();
+          return text('OK. You get "carry on" as soon as this reply ends. Finish now with a short progress update.');
+        }),
       tool('start_worker', 'Start a worker: a separate Claude chat in its own copy of this project (a git worktree on a new branch from the last commit), doing one part of the job at the same time as you. Returns at once; its report arrives here as a message when it finishes. Commit first. Up to ' + MAX_WORKERS + ' open at once.',
         { name: z.string().min(1).max(40).describe('A short label, e.g. "dark mode"'), task: z.string().min(1).describe('The complete task: what to build, which files, what done looks like, how to check it. The worker does not see this chat.') },
         async a => text(await startWorker(r, a.name, a.task))),
@@ -1148,7 +1155,9 @@ async function consume(r) {
         send({ type: 'turn', project: r.project, ms: m.duration_ms, turns: m.num_turns });
         try { const c = await r.q.getContextUsage(); r.context = { pct: c.percentage, used: c.totalTokens, max: c.rawMaxTokens || c.maxTokens }; } catch {}
         pushState();
-        const quiet = asWorker || workersPending(r.project);
+        if (m.is_error || stoppedByUser || asWorker || isQuick(r.project) || workersPending(r.project)) r.keepGoing = r.keepGoingFresh = null;
+        const going = !!(r.keepGoing || r.keepGoingFresh) && (autoRuns.get(r.project) || 0) < KEEP_GOING_MAX;
+        const quiet = asWorker || workersPending(r.project) || going;
         if (!quiet && !r.stopping && !stoppedByUser && !r.freshing && !r.newChat) unseen.add(r.project);
         if (!quiet && !r.stopping && !stoppedByUser && !r.freshing && !r.newChat) notify('Claude is done', `${projectName(r.project)} is waiting for your next message.`, r.project);
         afterTurn(r);
@@ -1184,7 +1193,7 @@ async function afterTurn(r) {
   const a = accById(r.accountId);
   if (runs.get(r.project) === r && !r.busy && r.newChat) {
     // Claude asked for a new chat: close this one and start it (on whichever account is usable).
-    const msg = r.newChat; r.newChat = null;
+    const msg = r.newChat; r.newChat = null; r.keepGoing = r.keepGoingFresh = null;
     await endRun(r);
     const sp = state.projects[r.project] || {};
     state.projects[r.project] = { ...sp, sessionId: null, freshNext: { size: r.context?.used || 0, byClaude: true } };
@@ -1195,23 +1204,52 @@ async function afterTurn(r) {
   if (runs.get(r.project) === r && !r.busy && moveTarget(a, r.turnModel)) {
     await endRun(r);
     const why = isOut(a) ? describeOut(a) : `${a.id} is nearly out (${a.five?.util ?? 0}% of 5-hour, ${a.week?.util ?? 0}% of weekly)`;
-    await handOff(r, why, null);
+    const plan = takeKeepGoing(r);
+    await handOff(r, why, plan ? carryOnMsg(plan) : null);
     return;
   }
   if (runs.get(r.project) !== r || r.busy || isQuick(r.project) || workerOf(r.project)) return;
   if (r.freshing) {
-    // The note is written: close this chat. The next message starts a fresh one.
+    // The note is written: close this chat. The next message starts a fresh one
+    // (right away if Claude said the work isn't done and nothing needs the user).
     r.freshing = false;
+    const plan = takeKeepGoing(r);
     await endRun(r);
     const sp = state.projects[r.project] || {};
-    state.projects[r.project] = { ...sp, sessionId: null, freshNext: { size: r.context?.used || 0 } };
+    state.projects[r.project] = { ...sp, sessionId: null, freshNext: { size: r.context?.used || 0, byClaude: !!plan } };
     persist(); pushState();
+    if (plan) await sendMessage(r.project, carryOnMsg(plan), [], null, { byClaude: true });
   } else if ((r.context?.used || 0) >= FRESH_AT) {
+    r.keepGoingFresh = r.keepGoing; r.keepGoing = null;
     r.freshing = true;
     addChat(r.project, { kind: 'system', text: `This chat has grown to ${Math.round(r.context.used / 1000)}k tokens, and every step re-reads all of it. Claude is writing the handoff note now; your next message starts a fresh chat that reads only the note.` });
     r.busy = true; r.answered = false; r.lastUserMsg = null; r.idleSince = null;
     r.push(WRITE_NOTE_NOW); pushState();
+  } else if (r.keepGoing) {
+    const plan = takeKeepGoing(r);
+    if (!plan) return;
+    r.busy = true; r.answered = false; r.lastUserMsg = carryOnMsg(plan); r.idleSince = null; r.turnStart = Date.now();
+    r.push(carryOnMsg(plan)); pushState();
   }
+}
+
+// Keep going: Claude said the work isn't done and nothing needs the user, so it is told to
+// carry on after its reply. Capped per project so it can't run forever unattended.
+const KEEP_GOING_MAX = Number(process.env.HYDRA_KEEP_GOING_MAX) || 30;
+const autoRuns = new Map();   // project -> carry-ons since the user last wrote
+const carryOnMsg = plan => `Carry on (sent by Hydra because you called keep_going; ${NAME} hasn't written). Your plan was: ${plan}`;
+function takeKeepGoing(r) {
+  const plan = r.keepGoingFresh || r.keepGoing;
+  r.keepGoing = r.keepGoingFresh = null;
+  if (!plan) return null;
+  const n = (autoRuns.get(r.project) || 0) + 1;
+  if (n > KEEP_GOING_MAX) {
+    addChat(r.project, { kind: 'system', text: `Claude has carried on by itself ${KEEP_GOING_MAX} times in a row, so it is pausing here. Send any message to let it continue.` });
+    return null;
+  }
+  autoRuns.set(r.project, n);
+  addChat(r.project, { kind: 'system', text: `Not done yet, nothing needed from you: carrying on (${n}/${KEEP_GOING_MAX}). Next: ${cut(plan, 300)}` });
+  return plan;
 }
 
 async function endRun(r) {
@@ -1310,6 +1348,7 @@ async function sendMessage(project, text, fileIds = [], promptOverride = null, {
     const { brandNew, ...rest } = state.projects[project]; state.projects[project] = rest; persist();
   }
   const { content, plain } = buildContent(promptOverride || text, files);
+  if (!byClaude) { autoRuns.delete(project); const c = runs.get(project); if (c) c.keepGoing = c.keepGoingFresh = null; }
   if (!byClaude) { addChat(project, { kind: 'user', text, files }); if (!['working', 'waiting'].includes(dotSeen.get(project))) dotDismiss(project); }
   unseen.delete(project);
   // Working on a project stars it and moves it to the top of main projects, where it stays after
