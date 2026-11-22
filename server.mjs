@@ -1133,6 +1133,8 @@ async function consume(r) {
         }
       } else if (m.type === 'system' && m.subtype === 'local_command_output') {
         addChat(r.project, { kind: 'assistant', text: m.content, account: r.accountId, command: true });
+      } else if (m.type === 'system' && m.subtype === 'background_tasks_changed') {
+        r.bgTasks = (m.tasks || []).filter(t => !t.ambient).length;   // a test run, background agent etc. still going
       } else if (m.type === 'system' && m.subtype === 'ui_status') {
         if (r.status !== m.text) { r.status = m.text || ''; pushState(); }   // a mod's status line, e.g. token-diet's "ctx 22K 2% · $0.01"
       } else if (m.type === 'system' && m.subtype === 'compact_boundary') {
@@ -1157,7 +1159,7 @@ async function consume(r) {
         pushState();
         if (m.is_error || stoppedByUser || asWorker || isQuick(r.project) || workersPending(r.project)) r.keepGoing = r.keepGoingFresh = null;
         const going = !!(r.keepGoing || r.keepGoingFresh) && (autoRuns.get(r.project) || 0) < KEEP_GOING_MAX;
-        const quiet = asWorker || workersPending(r.project) || going;
+        const quiet = asWorker || workersPending(r.project) || going || !!r.bgTasks;   // background work will start another turn
         if (!quiet && !r.stopping && !stoppedByUser && !r.freshing && !r.newChat) unseen.add(r.project);
         if (!quiet && !r.stopping && !stoppedByUser && !r.freshing && !r.newChat) notify('Claude is done', `${projectName(r.project)} is waiting for your next message.`, r.project);
         afterTurn(r);
@@ -1219,7 +1221,9 @@ async function afterTurn(r) {
     state.projects[r.project] = { ...sp, sessionId: null, freshNext: { size: r.context?.used || 0, byClaude: !!plan } };
     persist(); pushState();
     if (plan) await sendMessage(r.project, carryOnMsg(plan), [], null, { byClaude: true });
-  } else if ((r.context?.used || 0) >= FRESH_AT) {
+  } else if ((r.context?.used || 0) >= FRESH_AT && !r.bgTasks) {
+    // (Not while background work runs: closing the chat would kill it and lose its result.
+    // Its finish starts another turn, and this check runs again after that.)
     r.keepGoingFresh = r.keepGoing; r.keepGoing = null;
     r.freshing = true;
     addChat(r.project, { kind: 'system', text: `This chat has grown to ${Math.round(r.context.used / 1000)}k tokens, and every step re-reads all of it. Claude is writing the handoff note now; your next message starts a fresh chat that reads only the note.` });
@@ -1500,7 +1504,7 @@ async function tick() {
 // session id is kept, so the next message carries on where it left off.
 function closeIdle() {
   for (const r of [...runs.values()]) {
-    if (!r.busy && !r.perms.size && r.idleSince && Date.now() - r.idleSince > IDLE_CLOSE) { endRun(r).then(pushState); }
+    if (!r.busy && !r.perms.size && !r.bgTasks && r.idleSince && Date.now() - r.idleSince > IDLE_CLOSE) { endRun(r).then(pushState); }
   }
 }
 setInterval(() => { tick().catch(() => {}); closeIdle(); }, 30000);
