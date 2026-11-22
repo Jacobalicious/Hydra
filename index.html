@@ -1569,6 +1569,18 @@ function qPick(id, qi, label) {
 let lastVid = null;
 document.addEventListener('play', e => { if (e.target.tagName === 'VIDEO') lastVid = e.target; }, true);
 document.addEventListener('pointerdown', e => { if (e.target.tagName === 'VIDEO') lastVid = e.target; }, true);
+// Leaving a full-screen video: the browser loses the chat's scroll spot (it resizes
+// the page meanwhile), so put the video back where it was on screen.
+let fsKeep = null;
+function fsEnter(v) { const s = $('#scroll'); if (v?.tagName === 'VIDEO' && s.contains(v)) fsKeep = { v, top: s.scrollTop, off: v.getBoundingClientRect().top - s.getBoundingClientRect().top }; }
+function fsExit() {
+  const k = fsKeep; fsKeep = null; if (!k) return;
+  const put = () => { const s = $('#scroll'); s.scrollTop = k.v.isConnected ? s.scrollTop + (k.v.getBoundingClientRect().top - s.getBoundingClientRect().top) - k.off : k.top; };
+  put(); requestAnimationFrame(put); setTimeout(put, 150); setTimeout(put, 400);
+}
+document.addEventListener('fullscreenchange', () => { const f = document.fullscreenElement; if (f) fsEnter(f.tagName === 'VIDEO' ? f : f.querySelector?.('video')); else fsExit(); });
+document.addEventListener('webkitbeginfullscreen', e => fsEnter(e.target), true);   // iPhone's own video player
+document.addEventListener('webkitendfullscreen', () => fsExit(), true);
 document.addEventListener('keydown', e => {
   if (e.ctrlKey || e.metaKey || e.altKey || !lastVid?.isConnected) return;
   const a = document.activeElement;
