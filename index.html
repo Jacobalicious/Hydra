@@ -1108,10 +1108,16 @@ function openSide() { $('#side').classList.add('open'); $('#scrim').classList.ad
 function closeSide() { $('#side').classList.remove('open'); $('#scrim').classList.remove('show'); }
 $('#menuBtn').onclick = openSide; $('#sideClose').onclick = closeSide; $('#scrim').onclick = closeSide;
 
+// Only the most recent open wins: a slower, older load (startup, reconnect refresh, an
+// earlier tap) finishing late must not drag the page back to the project it was on.
+let openSeq = 0, wanted = null;   // wanted = the project last asked for (may still be loading)
 async function openProject(p) {
+  const my = ++openSeq; wanted = p;
   const r = await fetch('/api/chat?project=' + encodeURIComponent(p));
+  if (my !== openSeq) return;
   if (!r.ok) { toast('Could not open that folder', '', true); return; }
   const j = await r.json();
+  if (my !== openSeq) return;
   current = p; past = null;
   markSeen();
   try { localStorage.setItem('mc.project', p); } catch {}
@@ -1939,7 +1945,7 @@ function pageUpdated() {
 function connect() {
   es = new EventSource('/api/events');
   es.onopen = async () => {
-    if (offline) { offline = false; await loadProjects(); if (current) openProject(current); }
+    if (offline) { offline = false; const seq = openSeq; await loadProjects(); const p = wanted || current; if (p && seq === openSeq) openProject(p); }   // reload the one last tapped, not the one shown
   };
   es.onmessage = e => {
     const ev = JSON.parse(e.data);
