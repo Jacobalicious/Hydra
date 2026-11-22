@@ -6,6 +6,7 @@
 - token-diet is built in (plugins/token-diet), loaded in every chat.
 - Data folder is ~/.hydra, falling back to an existing ~/.multiclaude (where the owner's logins and chats live).
 - Workers: a project chat can start up to 3 parallel workers (own git worktree + branch). Reports go back to the lead, which merges and closes them.
+- Mic button in the composer (browser speech-to-text, Chrome/Edge/Safari; needs https or 127.0.0.1). Not tested on a phone yet.
 - Every chat gets REPLY_STYLE (short, bullets); project chats start workers on their own when a job splits.
 
 ## In progress

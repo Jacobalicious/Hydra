@@ -451,6 +451,8 @@ svg.i.xs { width: 13px; height: 13px; }
 .cchip:hover:not(:disabled) { background: var(--panel2); color: var(--ink); }
 .cchip.hot { color: var(--accent); }
 .cchip.plan { color: #8fb4ff; }
+.cchip.rec { color: #ff6b6b; animation: recp 1.2s ease-in-out infinite; }
+@keyframes recp { 50% { opacity: .45; } }
 /* Conversation memory: plain faint words, only while the pointer is over the bar under the message box. */
 #ctx { font-size: 12.5px; color: var(--faint); white-space: nowrap; padding: 0 8px; opacity: 0; transition: opacity .2s; pointer-events: none; flex: none; }
 .cbar:hover #ctx { opacity: 1; }
@@ -605,6 +607,7 @@ svg.i.xs { width: 13px; height: 13px; }
           <div class="cchips">
             <button class="cchip" id="photosBtn" title="Pick photos from your gallery" hidden></button>
             <button class="cchip" id="attach" title="Attach files or pictures"></button>
+            <button class="cchip" id="micBtn" title="Talk instead of typing" hidden></button>
             <button class="cchip" id="modeChip" title="How much Claude asks first"></button>
             <button class="cchip" id="modelChip" title="Model"></button>
             <button class="cchip" id="effortChip" title="How hard Claude thinks"></button>
@@ -667,6 +670,7 @@ const P = {
   pin: 'M12 17v5M8.5 3h7l-1.2 6.2 3.7 3.8H6l3.7-3.8z',
   star: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z',
   grid: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
+  mic: 'M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3M8 21h8',
   play: 'M7 4l13 8-13 8z', bolt: 'M13 2L4 14h7l-1 8 9-12h-7z', git: 'M6 3v12M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 9a9 9 0 0 1-9 9',
 };
 const ic = (n, c = '') => `<svg class="i ${c}" viewBox="0 0 24 24" aria-hidden="true"><path d="${P[n] || P.spark}"/></svg>`;
@@ -1861,6 +1865,7 @@ async function sendText() {
   if ((!t.trim() && !attachments.length) || !current) return;
   if (uploading()) { toast('Still attaching files…'); return; }
   const good = attachments.filter(a => a.status === 'done');
+  micStop(true);
   const keepT = t, keepA = attachments;
   $('#text').value = ''; attachments = []; drawTray(); autosize(); hideSlash();
   const fresh = curProject()?.quick && !curProject().lastAt;
@@ -1877,6 +1882,32 @@ $('#text').addEventListener('keydown', e => {
   }
   if (e.key === 'Enter' && !e.shiftKey && !touch && !e.isComposing) { e.preventDefault(); sendText(); }
 });
+// ============================================================ mic (speech to text)
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null, recBase = '';
+$('#micBtn').innerHTML = ic('mic', 'sm');
+$('#micBtn').hidden = !SR;
+function micStop(drop) { if (!rec) return; if (drop) { rec.onresult = null; recBase = ''; try { rec.abort(); } catch {} } else { try { rec.stop(); } catch {} } }
+$('#micBtn').onclick = () => {
+  if (rec) { micStop(); return; }
+  if (!window.isSecureContext) { toast('Mic needs a secure page', 'Open Hydra over https (or on this PC at 127.0.0.1).', true); return; }
+  const ta = $('#text'); if (ta.disabled) return;
+  rec = new SR();
+  rec.lang = navigator.language || 'en-US'; rec.continuous = true; rec.interimResults = true;
+  recBase = ta.value && !/\s$/.test(ta.value) ? ta.value + ' ' : ta.value;
+  rec.onresult = e => {
+    let fin = '', mid = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const r = e.results[i]; (r.isFinal ? (fin += r[0].transcript) : (mid += r[0].transcript));
+    }
+    if (fin) recBase += fin.trim() + ' ';
+    ta.value = recBase + mid; autosize(); if (S) drawAll();
+  };
+  rec.onerror = e => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') toast('Mic blocked', 'Allow the microphone for this page in the browser.', true); else if (e.error !== 'no-speech' && e.error !== 'aborted') toast('Mic stopped', e.error, true); };
+  rec.onend = () => { rec = null; $('#micBtn').classList.remove('rec'); $('#micBtn').title = 'Talk instead of typing'; const ta = $('#text'); if (ta.value.trim()) ta.value = ta.value.trimEnd(); autosize(); if (S) drawAll(); };
+  try { rec.start(); $('#micBtn').classList.add('rec'); $('#micBtn').title = 'Stop listening'; }
+  catch (err) { rec = null; toast('Mic did not start', err.message, true); }
+};
 function autosize() { const t = $('#text'); t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, innerHeight * 0.4) + 'px'; }
 $('#text').addEventListener('input', () => { autosize(); drawSlash(); if (S) drawAll(); });
 
