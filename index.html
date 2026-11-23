@@ -554,21 +554,37 @@ svg.i.xs { width: 13px; height: 13px; }
   .hero { margin-top: 7vh; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
-/* cute "fetching your chat" critter while a project loads */
-.loadpet { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; min-height:50vh; color:var(--muted); font-size:14px; animation: lpIn .25s ease; }
-.loadpet .pet { position:relative; width:64px; height:54px; animation: lpHop .9s cubic-bezier(.3,.7,.4,1) infinite; }
-.loadpet .body { position:absolute; inset:0; border-radius:50% 50% 44% 44%; background:linear-gradient(180deg,var(--accent),var(--accent2)); box-shadow:0 6px 16px rgba(201,100,59,.3); }
-.loadpet .ear { position:absolute; top:-7px; width:16px; height:18px; background:var(--accent); border-radius:50% 50% 0 0; }
-.loadpet .ear.l { left:8px; transform:rotate(-18deg); } .loadpet .ear.r { right:8px; transform:rotate(18deg); }
-.loadpet .eye { position:absolute; top:20px; width:7px; height:9px; background:#2b1a12; border-radius:50%; animation: lpBlink 3s infinite; }
-.loadpet .eye.l { left:19px; } .loadpet .eye.r { right:19px; }
-.loadpet .cheek { position:absolute; top:31px; width:9px; height:5px; background:rgba(255,170,190,.8); border-radius:50%; }
-.loadpet .cheek.l { left:11px; } .loadpet .cheek.r { right:11px; }
-.loadpet .mouth { position:absolute; top:31px; left:50%; width:8px; height:4px; margin-left:-4px; border-bottom:2px solid #2b1a12; border-radius:0 0 50% 50%; }
-.loadpet .shadow { width:46px; height:7px; border-radius:50%; background:rgba(0,0,0,.18); animation: lpShadow .9s cubic-bezier(.3,.7,.4,1) infinite; margin-top:-8px; }
+/* mail-carrier critter while a project's chat loads; each project gets its own animal */
+.loadpet { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; min-height:50vh; color:var(--muted); font-size:14px; animation: lpIn .25s ease; }
+.loadpet .track { position:relative; width:min(320px,80vw); height:92px; border-bottom:2px dashed var(--accent-line); }
+.loadpet .run { position:absolute; bottom:0; left:0; animation: lpRun 2.6s linear infinite; }
+.loadpet .pet { position:relative; width:58px; height:50px; margin-bottom:4px; animation: lpBob .32s ease-in-out infinite alternate; }
+.loadpet .body { position:absolute; inset:0; border-radius:50% 50% 44% 44%; background:linear-gradient(180deg,var(--c1),var(--c2)); box-shadow:0 5px 12px rgba(0,0,0,.18); }
+.loadpet .ear { position:absolute; background:var(--c1); }
+.cat .ear, .fox .ear { top:-9px; width:0; height:0; background:none; border-left:9px solid transparent; border-right:9px solid transparent; border-bottom:16px solid var(--c1); }
+.cat .ear.l, .fox .ear.l { left:5px; transform:rotate(-12deg); } .cat .ear.r, .fox .ear.r { right:5px; transform:rotate(12deg); }
+.bunny .ear { top:-26px; width:12px; height:32px; border-radius:50%; } .bunny .ear.l { left:12px; transform:rotate(-10deg); } .bunny .ear.r { right:12px; transform:rotate(14deg); animation: lpFlop .64s ease-in-out infinite alternate; }
+.bear .ear, .frog .ear { top:-6px; width:17px; height:17px; border-radius:50%; } .bear .ear.l, .frog .ear.l { left:4px; } .bear .ear.r, .frog .ear.r { right:4px; }
+.loadpet .frog .eye { top:-1px; width:5px; height:6px; }
+.chick .ear { top:-9px; left:24px; width:10px; height:12px; border-radius:50% 50% 0 50%; transform:rotate(30deg); } .chick .ear.r { display:none; }
+.loadpet .eye { position:absolute; top:17px; width:6px; height:8px; background:#2b1a12; border-radius:50%; animation: lpBlink 3s infinite; }
+.loadpet .eye.l { left:20px; } .loadpet .eye.r { right:12px; }
+.loadpet .cheek { position:absolute; top:28px; right:4px; width:8px; height:5px; background:rgba(255,160,185,.85); border-radius:50%; }
+.loadpet .mouth { position:absolute; top:28px; right:16px; width:7px; height:4px; border-bottom:2px solid #2b1a12; border-radius:0 0 50% 50%; }
+.loadpet .chick .mouth { border:none; width:0; height:0; top:24px; right:6px; border-top:4px solid transparent; border-bottom:4px solid transparent; border-left:8px solid #f0a020; border-radius:0; }
+.loadpet .feet { position:absolute; bottom:-5px; left:12px; right:12px; height:6px; }
+.loadpet .feet i { position:absolute; width:11px; height:6px; border-radius:50%; background:var(--c2); animation: lpStep .32s ease-in-out infinite alternate; }
+.loadpet .feet i:last-child { right:0; animation-direction:alternate-reverse; }
+.loadpet .mail { position:absolute; top:22px; right:-16px; width:22px; height:15px; background:#fffaf2; border:1.5px solid #c9a98a; border-radius:2px; transform:rotate(8deg); overflow:hidden; }
+.loadpet .mail::before { content:''; position:absolute; left:-1px; right:-1px; top:-8px; height:14px; border:1.5px solid #c9a98a; transform:rotate(45deg) scale(.72); transform-origin:center; background:#fff3e2; }
+.loadpet .mail::after { content:''; position:absolute; left:8px; top:5px; width:5px; height:5px; border-radius:50%; background:#e0506a; }
+.loadpet .puff { position:absolute; bottom:2px; left:-10px; width:8px; height:8px; border-radius:50%; background:var(--accent-line); animation: lpPuff .32s ease-out infinite; }
 .loadpet .dots span { display:inline-block; animation: lpDot 1.2s infinite; } .loadpet .dots span:nth-child(2){animation-delay:.15s} .loadpet .dots span:nth-child(3){animation-delay:.3s}
-@keyframes lpHop { 0%,100% { transform:translateY(0) scale(1.08,.92); } 15% { transform:translateY(0) scale(.95,1.05); } 50% { transform:translateY(-22px) scale(1,1); } 85% { transform:translateY(0) scale(1.05,.95); } }
-@keyframes lpShadow { 0%,100% { transform:scale(1); opacity:.9; } 50% { transform:scale(.6); opacity:.4; } }
+@keyframes lpRun { from { transform:translateX(-30px); } to { transform:translateX(calc(min(320px,80vw) - 30px)); } }
+@keyframes lpBob { from { transform:translateY(0) rotate(-3deg); } to { transform:translateY(-9px) rotate(3deg); } }
+@keyframes lpStep { from { transform:translateX(-3px); } to { transform:translateX(3px); } }
+@keyframes lpFlop { from { transform:rotate(14deg); } to { transform:rotate(34deg); } }
+@keyframes lpPuff { from { transform:scale(.4); opacity:.9; } to { transform:translateX(-14px) scale(1.4); opacity:0; } }
 @keyframes lpBlink { 0%,92%,100% { transform:scaleY(1); } 95% { transform:scaleY(.1); } }
 @keyframes lpDot { 0%,60%,100% { transform:translateY(0); opacity:.4; } 30% { transform:translateY(-4px); opacity:1; } }
 @keyframes lpIn { from { opacity:0; transform:translateY(6px); } }
@@ -1130,10 +1146,15 @@ $('#menuBtn').onclick = openSide; $('#sideClose').onclick = closeSide; $('#scrim
 // Only the most recent open wins: a slower, older load (startup, reconnect refresh, an
 // earlier tap) finishing late must not drag the page back to the project it was on.
 let loadingChat = false;
-const PET_LINES = ['Fetching your chat', 'Sniffing out the messages', 'Digging up the conversation', 'Hopping over there', 'Unpacking your stuff', 'Fluffing the pillows'];
+const PETS = [   // [kind, main colour, shade, name]
+  ['cat', '#9aa3b5', '#737c90', 'Kitty'], ['bunny', '#f2e6dc', '#d8c4b4', 'Bun'], ['bear', '#b0805a', '#8a5f3e', 'Bear'],
+  ['frog', '#7cc46a', '#58a048', 'Frog'], ['fox', '#e5875c', '#c9643b', 'Fox'], ['chick', '#f6d55c', '#e0b83a', 'Chick'],
+];
+function petFor(p) { let h = 0; for (const ch of p || '') h = (h * 31 + ch.charCodeAt(0)) >>> 0; return PETS[h % PETS.length]; }
 function petHtml() {
-  const line = PET_LINES[Math.floor(Math.random() * PET_LINES.length)];
-  return `<div class="loadpet"><div class="pet"><div class="ear l"></div><div class="ear r"></div><div class="body"></div><div class="eye l"></div><div class="eye r"></div><div class="cheek l"></div><div class="cheek r"></div><div class="mouth"></div></div><div class="shadow"></div><div>${line}<span class="dots"><span>.</span><span>.</span><span>.</span></span></div></div>`;
+  const [kind, c1, c2, name] = petFor(current);
+  const line = [`${name} is bringing your chat`, `${name} is on the way with your mail`, `Special delivery from ${name}`, `${name} is running it over`][Math.floor(Math.random() * 4)];
+  return `<div class="loadpet"><div class="track"><div class="run"><div class="pet ${kind}" style="--c1:${c1};--c2:${c2}"><div class="ear l"></div><div class="ear r"></div><div class="body"></div><div class="eye l"></div><div class="eye r"></div><div class="cheek"></div><div class="mouth"></div><div class="feet"><i></i><i></i></div><div class="mail"></div><div class="puff"></div></div></div></div><div>${line}<span class="dots"><span>.</span><span>.</span><span>.</span></span></div></div>`;
 }
 let openSeq = 0, wanted = null;   // wanted = the project last asked for (may still be loading)
 async function openProject(p) {
