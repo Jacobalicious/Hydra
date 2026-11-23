@@ -146,7 +146,7 @@ svg.i.xs { width: 13px; height: 13px; }
 .allbtn:hover { background: var(--panel); color: var(--ink); }
 .allbtn span { margin-left: auto; font-size: 12px; color: var(--faint); }
 .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 0 var(--ok); animation: pulse 1.6s infinite; flex: none; }
-.live-dot.ask { background: var(--accent); animation: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+.live-dot.asking { background: var(--accent); animation: none; box-shadow: 0 0 0 3px var(--accent-soft); }
 .live-dot.rest { background: var(--warn); animation: none; }
 .live-dot.done { background: #5aa9e6; animation: none; box-shadow: 0 0 0 3px rgba(90,169,230,.18); }
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(98,196,142,.55); } 70% { box-shadow: 0 0 0 7px rgba(98,196,142,0); } 100% { box-shadow: 0 0 0 0 rgba(98,196,142,0); } }
@@ -819,7 +819,7 @@ const permsOf = p => (S?.perms || []).filter(r => r.project === p);
 const setOf = p => S?.projectSettings?.[p] || { mode: S?.mode, model: S?.model, effort: S?.effort };
 // What a project is doing right now, for the dot in the sidebar.
 function liveOf(p) {
-  if (permsOf(p).length) return { dot: 'ask', text: 'Needs your OK' };
+  if (permsOf(p).length) return { dot: 'asking', text: 'Needs your OK' };
   if (runOf(p)?.busy) return { dot: '', text: 'Claude is working' };
   if (waitOf(p)) return { dot: 'rest', text: 'Waiting for an account' };
   if (S?.done?.includes(p)) return { dot: 'done', text: 'Done, waiting for you' };
@@ -1561,37 +1561,47 @@ function drawStatus() {
 const qState = {};   // permission id -> { qi -> Set(labels) / other text }
 function drawPerms() {
   const box = $('#perms');
-  const keep = document.activeElement?.closest?.('.ask')?.dataset.id;
-  if (keep && S.perms.some(r => r.id === keep)) { // don't wipe a card while someone is typing in it
-    box.querySelectorAll('.ask').forEach(el => { if (!S.perms.some(r => r.id === el.dataset.id)) el.remove(); });
-    return;
-  }
   // Full cards for this project; one line each for the others, with a way to jump there.
   const nameOf = path => { const p = projects.find(x => x.path === path); return p ? leafOf(p) : path.split('\\').pop(); };
-  box.innerHTML = [...S.perms].sort((a, b) => (b.project === current) - (a.project === current)).map(r => {
-    const where = '';
-    if (r.project !== current) {
-      const what = r.kind === 'question' ? 'has a question' : r.kind === 'plan' ? 'has a plan for you' : 'wants to ' + r.title.replace(/^claude /i, '');
-      return `<div class="ask mini" data-id="${esc(r.id)}"><span class="ai" style="color:var(--accent)">${ic(r.kind === 'question' ? 'question' : r.kind === 'plan' ? 'map' : toolIcon(r.tool), 'sm')}</span>
-        <span class="mt"><b>${esc(nameOf(r.project))}</b>: Claude ${esc(what)}</span><button class="btn sm" data-goto="${esc(r.project)}">Open</button></div>`;
-    }
-    if (r.kind === 'question') return qCardHtml(r);
-    if (r.kind === 'plan') {
-      return `<div class="ask" data-id="${esc(r.id)}"><div class="aq"><span class="ai">${ic('map', 'sm')}</span>Here's the plan. Go ahead?</div>
-        <div class="planbox md">${md(r.plan)}</div>
-        <div class="row"><button class="btn primary" data-allow="${esc(r.id)}">${ic('check', 'sm')}Approve plan</button><button class="btn" data-deny="${esc(r.id)}">Keep planning</button>${where}</div></div>`;
-    }
-    const t = /^claude /i.test(r.title) ? r.title : 'Claude wants to ' + r.title;
-    return `<div class="ask" data-id="${esc(r.id)}"><div class="aq"><span class="ai">${ic(toolIcon(r.tool), 'sm')}</span>${esc(t)}</div>
-      ${r.diff ? detailHtml(r.diff) : r.detail ? `<div class="pane"><pre>${r.tool === 'Bash' || r.tool === 'PowerShell' ? '<span class="pr">› </span>' : ''}${esc(r.detail)}</pre></div>` : ''}
-      ${r.reason ? `<div class="why">${esc(r.reason)}</div>` : ''}
-      <div class="row"><button class="btn primary" data-allow="${esc(r.id)}">${ic('check', 'sm')}Allow</button>
-      ${r.canAlways ? `<button class="btn" data-always="${esc(r.id)}">Always allow this</button>` : ''}
-      <button class="btn danger" data-deny="${esc(r.id)}">${ic('x', 'sm')}Deny</button>${where}</div></div>`;
-  }).join('');
+  const want = [...S.perms].sort((a, b) => (b.project === current) - (a.project === current)).map(r => ({ id: r.id, html: permHtml(r, nameOf) }));
+  // Only touch cards that changed, so typing elsewhere (which redraws the page) doesn't make them flash.
+  const have = [...box.children];
+  const sameOrder = have.length === want.length && have.every((el, i) => el.dataset.id === want[i].id);
+  if (!sameOrder) {
+    const keep = new Map(have.map(el => [el.dataset.id, el]));
+    box.replaceChildren(...want.map(w => { const el = keep.get(w.id); return el && el._h === w.html ? (el.style.animation = 'none', el) : mk(w); }));
+  } else have.forEach((el, i) => {
+    const w = want[i]; if (el._h === w.html) return;
+    const mini = w.html.startsWith('<div class="ask mini');
+    if (el.contains(document.activeElement) && el.classList.contains('mini') === mini) return;   // he is typing in it
+    el.replaceWith(mk(w));
+  });
+  function mk(w) { const t = document.createElement('template'); t.innerHTML = w.html.trim(); const el = t.content.firstElementChild; el._h = w.html; el._new = true; return el; }
   // A fresh question takes the keyboard (so 1-4 work) unless he is in the middle of typing a message.
   const qc = box.querySelector('.qcard');
-  if (qc && !$('#text').value.trim() && !document.querySelector('.modal.show, #viewer.show')) qc.focus({ preventScroll: true });
+  if (qc?._new && !$('#text').value.trim() && !document.querySelector('.modal.show, #viewer.show')) qc.focus({ preventScroll: true });
+  box.querySelectorAll('.ask').forEach(el => { el._new = false; });
+}
+function permHtml(r, nameOf) {
+  const where = '';
+  if (r.project !== current) {
+    const what = r.kind === 'question' ? 'has a question' : r.kind === 'plan' ? 'has a plan for you' : 'wants to ' + r.title.replace(/^claude /i, '');
+    return `<div class="ask mini" data-id="${esc(r.id)}"><span class="ai" style="color:var(--accent)">${ic(r.kind === 'question' ? 'question' : r.kind === 'plan' ? 'map' : toolIcon(r.tool), 'sm')}</span>
+      <span class="mt"><b>${esc(nameOf(r.project))}</b>: Claude ${esc(what)}</span><button class="btn sm" data-goto="${esc(r.project)}">Open</button></div>`;
+  }
+  if (r.kind === 'question') return qCardHtml(r);
+  if (r.kind === 'plan') {
+    return `<div class="ask" data-id="${esc(r.id)}"><div class="aq"><span class="ai">${ic('map', 'sm')}</span>Here's the plan. Go ahead?</div>
+      <div class="planbox md">${md(r.plan)}</div>
+      <div class="row"><button class="btn primary" data-allow="${esc(r.id)}">${ic('check', 'sm')}Approve plan</button><button class="btn" data-deny="${esc(r.id)}">Keep planning</button>${where}</div></div>`;
+  }
+  const t = /^claude /i.test(r.title) ? r.title : 'Claude wants to ' + r.title;
+  return `<div class="ask" data-id="${esc(r.id)}"><div class="aq"><span class="ai">${ic(toolIcon(r.tool), 'sm')}</span>${esc(t)}</div>
+    ${r.diff ? detailHtml(r.diff) : r.detail ? `<div class="pane"><pre>${r.tool === 'Bash' || r.tool === 'PowerShell' ? '<span class="pr">› </span>' : ''}${esc(r.detail)}</pre></div>` : ''}
+    ${r.reason ? `<div class="why">${esc(r.reason)}</div>` : ''}
+    <div class="row"><button class="btn primary" data-allow="${esc(r.id)}">${ic('check', 'sm')}Allow</button>
+    ${r.canAlways ? `<button class="btn" data-always="${esc(r.id)}">Always allow this</button>` : ''}
+    <button class="btn danger" data-deny="${esc(r.id)}">${ic('x', 'sm')}Deny</button>${where}</div></div>`;
 }
 // One question on screen at a time, with the others as chips to jump between.
 const qAnswer = (r, st, qi) => [...(st[qi] instanceof Set ? st[qi] : []), ...((st['o' + qi] || '').trim() ? [st['o' + qi].trim()] : [])].join(', ');
@@ -1611,9 +1621,10 @@ function qCardHtml(r) {
 function redrawQ(id, focusOther) {
   const r = S.perms.find(x => x.id === id), el = document.querySelector(`.ask[data-id="${CSS.escape(id)}"]`);
   if (!r || !el) return;
-  el.outerHTML = qCardHtml(r);
+  const h = qCardHtml(r);
+  el.outerHTML = h;
   const card = document.querySelector(`.ask[data-id="${CSS.escape(id)}"]`);
-  card.style.animation = 'none';
+  card._h = h; card.style.animation = 'none';
   (focusOther ? card.querySelector('.other') : card).focus({ preventScroll: true });
 }
 // Move on from the question on screen: to the next one, or send when every one has an answer.
