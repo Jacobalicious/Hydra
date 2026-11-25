@@ -519,6 +519,7 @@ svg.i.xs { width: 13px; height: 13px; }
 #viewer.show { display: grid; }
 #viewer img { max-width: calc(100vw - 40px); max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px); object-fit: contain; border-radius: 10px; transform-origin: 0 0; user-select: none; -webkit-user-drag: none; }
 #viewer.zoomed img { cursor: grab; border-radius: 0; }
+#viewer .vx { position: fixed; top: calc(12px + env(safe-area-inset-top)); right: 12px; z-index: 81; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(0,0,0,.6); color: #fff; font-size: 26px; line-height: 44px; text-align: center; cursor: pointer; padding: 0; }
 
 /* ---------- drop + toasts */
 #drop { position: fixed; inset: 0; z-index: 90; display: none; place-items: center; background: color-mix(in srgb, var(--bg) 70%, transparent); backdrop-filter: blur(4px); pointer-events: none; }
@@ -668,7 +669,7 @@ svg.i.xs { width: 13px; height: 13px; }
   <div class="pall" id="pall"></div>
   <div class="palf"><span>★ pins a project to the top of the sidebar</span><button class="btn sm" id="palOpen"><span data-i="folderPlus" data-c="sm"></span>Open another folder</button></div>
 </div></div>
-<div id="viewer"><img alt=""></div>
+<div id="viewer"><img alt=""><button class="vx" type="button" aria-label="Close">×</button></div>
 <div id="drop"><div>Drop to attach</div></div>
 <div id="toasts"></div>
 
@@ -1373,7 +1374,8 @@ $('#chat').addEventListener('click', e => {
 // Picture viewer: wheel / pinch zooms where you point, drag moves, double-click toggles zoom, click outside (or unzoomed) closes.
 const vz = (() => {
   const V = $('#viewer'), I = V.querySelector('img'), pts = new Map();
-  let s = 1, x = 0, y = 0, moved = false, last = null, pinch = null;
+  let s = 1, x = 0, y = 0, moved = false, last = null, pinch = null, start = null;
+  const close = () => { clearTimeout(shut); V.classList.remove('show'); };
   const apply = () => { I.style.transform = `translate(${x}px,${y}px) scale(${s})`; V.classList.toggle('zoomed', s > 1.01); };
   const zoomAt = (cx, cy, ns) => {
     ns = Math.min(12, Math.max(1, ns));
@@ -1385,8 +1387,9 @@ const vz = (() => {
   const reset = () => { s = 1; x = y = 0; pts.clear(); apply(); };
   V.addEventListener('wheel', e => { e.preventDefault(); zoomAt(e.clientX, e.clientY, s * Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
   V.addEventListener('pointerdown', e => {
+    if (e.target.closest('.vx')) return;
     pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); V.setPointerCapture(e.pointerId);
-    if (pts.size === 1) { moved = false; last = { x: e.clientX, y: e.clientY }; }
+    if (pts.size === 1) { moved = false; last = { x: e.clientX, y: e.clientY }; start = last; }
     if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), s }; moved = true; }
   });
   V.addEventListener('pointermove', e => {
@@ -1394,12 +1397,13 @@ const vz = (() => {
     if (pts.size === 2 && pinch) { const [a, b] = [...pts.values()]; zoomAt((a.x + b.x) / 2, (a.y + b.y) / 2, pinch.s * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d); return; }
     if (pts.size === 1 && last) {
       const dx = e.clientX - last.x, dy = e.clientY - last.y; last = { x: e.clientX, y: e.clientY };
-      if (Math.abs(dx) + Math.abs(dy) > 2) moved = true;
+      if (Math.abs(e.clientX - start.x) + Math.abs(e.clientY - start.y) > 12) moved = true;
       if (s > 1) { x += dx; y += dy; apply(); }
     }
   });
   const up = e => { pts.delete(e.pointerId); if (pts.size < 2) pinch = null; if (pts.size === 1) last = [...pts.values()][0]; };
   V.addEventListener('pointerup', up); V.addEventListener('pointercancel', up);
+  V.querySelector('.vx').addEventListener('click', e => { e.stopPropagation(); close(); });
   let shut = null;   // a single click closes, but waits a moment so a double-click can zoom instead
   V.addEventListener('dblclick', e => { clearTimeout(shut); zoomAt(e.clientX, e.clientY, s > 1.01 ? 1 : 3); });
   V.addEventListener('click', e => { if (moved || (s > 1.01 && e.target === I) || e.detail > 1) return; clearTimeout(shut); shut = setTimeout(() => V.classList.remove('show'), 250); });
